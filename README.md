@@ -107,10 +107,8 @@ examples/fr.po:38: [info:double-quotes] missing double quotes (2 / 0)
 
 (...)
 
-1 files checked: 19 problems in 1 files (5 errors, 1 warnings, 13 info) [848.884µs]
+1 files checked: 18 problems in 1 files (5 errors, 1 warnings, 12 info) [848.884µs]
 ```
-
-This file [examples/fr.po](examples/fr.po) contains one error per rule.
 
 Poexam can also give statistics about the translation progress and number of lines/words/charecters, see: `poexam help stats`.
 
