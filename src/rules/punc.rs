@@ -160,12 +160,10 @@ fn get_punc_start(s: &str) -> &str {
             if is_punc(*c) {
                 whitespace_ended = true;
                 true
+            } else if c.is_whitespace() && *c != '\n' {
+                !whitespace_ended
             } else {
-                if c.is_whitespace() && *c != '\n' {
-                    !whitespace_ended
-                } else {
-                    false
-                }
+                false
             }
         })
         .map(char::len_utf8)
@@ -183,12 +181,10 @@ fn get_punc_end(s: &str) -> &str {
             if is_punc(*c) {
                 whitespace_ended = true;
                 true
+            } else if c.is_whitespace() && *c != '\n' {
+                !whitespace_ended
             } else {
-                if c.is_whitespace() && *c != '\n' {
-                    !whitespace_ended
-                } else {
-                    false
-                }
+                false
             }
         })
         .map(char::len_utf8)
