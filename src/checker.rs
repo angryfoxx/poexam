@@ -280,16 +280,20 @@ fn display_settings(args: &args::CheckArgs, rules: &Rules) {
 
 /// Display errors in human format.
 fn display_errors_human(result: &[(PathBuf, Vec<Diagnostic>)], args: &args::CheckArgs) {
+    let mut diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
     match args.sort {
         args::CheckSort::Line => {
-            for (_filename, diags) in result {
-                for diag in diags {
-                    println!("{diag}");
-                }
-            }
+            diags.sort_by_key(|diag| {
+                (
+                    diag.path.as_path(),
+                    diag.lines
+                        .iter()
+                        .map(|l| l.line_number)
+                        .collect::<Vec<usize>>(),
+                )
+            });
         }
         args::CheckSort::Message => {
-            let mut diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
             diags.sort_by_key(|diag| {
                 (
                     diag.msgid_raw.as_str(),
@@ -300,12 +304,8 @@ fn display_errors_human(result: &[(PathBuf, Vec<Diagnostic>)], args: &args::Chec
                         .collect::<Vec<usize>>(),
                 )
             });
-            for diag in diags {
-                println!("{diag}");
-            }
         }
         args::CheckSort::Rule => {
-            let mut diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
             diags.sort_by_key(|error| {
                 (
                     error.rule,
@@ -317,10 +317,10 @@ fn display_errors_human(result: &[(PathBuf, Vec<Diagnostic>)], args: &args::Chec
                         .collect::<Vec<usize>>(),
                 )
             });
-            for error in diags {
-                println!("{error}");
-            }
         }
+    }
+    for diag in diags {
+        println!("{diag}");
     }
 }
 
