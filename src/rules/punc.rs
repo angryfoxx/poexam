@@ -28,17 +28,16 @@ impl RuleChecker for PuncStartRule {
     /// The following characters are considered as punctuation for this check
     /// (half-width and full-width):
     /// - colon: `:`, `：`
-    /// - semicolon: `;`, `；`
+    /// - semicolon: `;`, `；`, U+061B (Arabic semicolon)
     /// - full stop (period): `.`, `。`, `…`
     /// - comma: `,`, `，`, `،`
     /// - exclamation mark: `!`, `！`
-    /// - question mark: `?`, `？`, `؟`
+    /// - question mark: `?`, `？`, U+061F (Arabic question mark)
     ///
     /// Special cases handled:
     /// - Greek: the question mark is `;`.
-    /// - Arabic and Persian: the question mark is `؟`.
-    /// - Leading dots in the source or translation are ignored, because they are often
-    ///   used for hidden or filename extension.
+    /// - Leading dots in the source or translation are ignored, because they
+    ///   are often used for hidden or filename extension.
     ///
     /// Wrong entry:
     /// ```text
@@ -99,15 +98,14 @@ impl RuleChecker for PuncEndRule {
     /// The following characters are considered as punctuation for this check
     /// (half-width and full-width):
     /// - colon: `:`, `：`
-    /// - semicolon: `;`, `；`
+    /// - semicolon: `;`, `；`, U+061B (Arabic semicolon)
     /// - full stop (period): `.`, `。`, `…`
     /// - comma: `,`, `，`, `،`
     /// - exclamation mark: `!`, `！`
-    /// - question mark: `?`, `？`, `؟`
+    /// - question mark: `?`, `？`, U+061F (Arabic question mark)
     ///
     /// Special cases handled:
     /// - Greek: the question mark is `;`.
-    /// - Arabic and Persian: the question mark is `؟`.
     ///
     /// Wrong entry:
     /// ```text
@@ -146,7 +144,8 @@ fn is_punc(c: char) -> bool {
         || c == '：'
         || c == ';'
         || c == '；'
-        || c == '؛'
+        // Arabic semicolon.
+        || c == '\u{061B}'
         || c == '.'
         || c == '。'
         || c == '…'
@@ -157,7 +156,8 @@ fn is_punc(c: char) -> bool {
         || c == '！'
         || c == '?'
         || c == '？'
-        || c == '؟'
+        // Arabic question mark.
+        || c == '\u{061F}'
 }
 
 /// Get the leading punctuation of a string (it includes whitespace).
@@ -210,11 +210,11 @@ fn punc_normalize(s: &str, language: &str) -> String {
             '?' if language == "el" => ';',
             // General punctuation normalization.
             '：' => ':',
-            '；' | '؛' => ';',
+            '；' | '\u{061B}' => ';',
             '。' => '.',
             '，' | '،' => ',',
             '！' => '!',
-            '？' | '؟' => '?',
+            '？' | '\u{061F}' => '?',
             _ => c,
         })
         .collect::<String>()
@@ -284,7 +284,10 @@ mod tests {
     fn test_punc_normalize() {
         assert_eq!(punc_normalize("", "fr"), "");
         assert_eq!(punc_normalize("test", "fr"), "test");
-        assert_eq!(punc_normalize("。，！？؟：；؛。。。", "zh"), ".,!??:;;…");
+        assert_eq!(
+            punc_normalize("。，！？\u{061F}：；\u{061B}。。。", "zh"),
+            ".,!??:;;…"
+        );
         assert_eq!(punc_normalize("?", "fr"), "?");
         // Special case for Greek question mark.
         assert_eq!(punc_normalize("?", "el"), ";");
