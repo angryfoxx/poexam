@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -49,8 +48,10 @@ impl RuleChecker for WhitespaceStartRule {
             checker.report_msg(
                 entry,
                 format!("inconsistent leading whitespace ('{id_ws}' / '{str_ws}')"),
-                msgid.highlight_pos(0, id_ws.len()),
-                msgstr.highlight_pos(0, str_ws.len()),
+                msgid,
+                &[(0, id_ws.len())],
+                msgstr,
+                &[(0, str_ws.len())],
             );
         }
     }
@@ -97,8 +98,10 @@ impl RuleChecker for WhitespaceEndRule {
             checker.report_msg(
                 entry,
                 format!("inconsistent trailing whitespace ('{id_ws}' / '{str_ws}')"),
-                msgid.highlight_pos(msgid.len() - id_ws.len(), msgid.len()),
-                msgstr.highlight_pos(msgstr.len() - str_ws.len(), msgstr.len()),
+                msgid,
+                &[(msgid.len() - id_ws.len(), msgid.len())],
+                msgstr,
+                &[(msgstr.len() - str_ws.len(), msgstr.len())],
             );
         }
     }

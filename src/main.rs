@@ -35,7 +35,6 @@ mod c_format;
 mod checker;
 mod diagnostic;
 mod dir;
-mod highlight;
 mod po;
 mod rules;
 mod stats;

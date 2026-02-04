@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -90,8 +89,10 @@ impl RuleChecker for BracketsRule {
                         },
                         BRACKET_NAMES[idx], bracket.0, bracket.1,
                     ),
-                    msgid.highlight_list_pos(&id_open),
-                    msgstr.highlight_list_pos(&str_open),
+                    msgid,
+                    &id_open,
+                    msgstr,
+                    &str_open,
                 );
                 continue;
             }
@@ -102,8 +103,10 @@ impl RuleChecker for BracketsRule {
                         "missing opening {} brackets '{}' ({id_count_open} / {str_count_open})",
                         BRACKET_NAMES[idx], bracket.0,
                     ),
-                    msgid.highlight_list_pos(&id_open),
-                    msgstr.highlight_list_pos(&str_open),
+                    msgid,
+                    &id_open,
+                    msgstr,
+                    &str_open,
                 );
             }
             if id_count_open < str_count_open {
@@ -113,8 +116,10 @@ impl RuleChecker for BracketsRule {
                         "extra opening {} brackets '{}' ({id_count_open} / {str_count_open})",
                         BRACKET_NAMES[idx], bracket.0,
                     ),
-                    msgid.highlight_list_pos(&id_open),
-                    msgstr.highlight_list_pos(&str_open),
+                    msgid,
+                    &id_open,
+                    msgstr,
+                    &str_open,
                 );
             }
             if id_count_close > str_count_close {
@@ -124,8 +129,10 @@ impl RuleChecker for BracketsRule {
                         "missing closing {} brackets '{}' ({id_count_close} / {str_count_close})",
                         BRACKET_NAMES[idx], bracket.1,
                     ),
-                    msgid.highlight_list_pos(&id_close),
-                    msgstr.highlight_list_pos(&str_close),
+                    msgid,
+                    &id_close,
+                    msgstr,
+                    &str_close,
                 );
             }
             if id_count_close < str_count_close {
@@ -135,8 +142,10 @@ impl RuleChecker for BracketsRule {
                         "extra closing {} brackets '{}' ({id_count_close} / {str_count_close})",
                         BRACKET_NAMES[idx], bracket.1,
                     ),
-                    msgid.highlight_list_pos(&id_close),
-                    msgstr.highlight_list_pos(&str_close),
+                    msgid,
+                    &id_close,
+                    msgstr,
+                    &str_close,
                 );
             }
         }

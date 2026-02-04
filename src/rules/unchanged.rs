@@ -52,8 +52,10 @@ impl RuleChecker for UnchangedRule {
                 checker.report_msg(
                     entry,
                     "unchanged translation".to_string(),
-                    msgid.to_string(),
-                    msgstr.to_string(),
+                    msgid,
+                    &[],
+                    msgstr,
+                    &[],
                 );
             }
         }

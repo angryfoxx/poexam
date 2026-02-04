@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::po::escape::EscapePoExt;
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize)]
 pub struct Message {
     pub line_number: usize,
     pub value: String,

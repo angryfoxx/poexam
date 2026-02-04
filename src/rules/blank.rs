@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -47,8 +46,10 @@ impl RuleChecker for BlankRule {
             checker.report_msg(
                 entry,
                 "blank translation".to_string(),
-                msgid.to_string(),
-                msgstr.highlight_pos(0, msgstr.len()),
+                msgid,
+                &[],
+                msgstr,
+                &[(0, msgstr.len())],
             );
         }
     }

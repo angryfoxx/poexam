@@ -2,25 +2,23 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 use clap::ValueEnum;
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
+use serde::{
+    Serialize,
+    ser::{SerializeStruct, Serializer},
+};
+
+const HIGHLIGHT_COLOR: &str = "bright yellow";
+const HIGHLIGHT_ON_COLOR: &str = "red";
 
 #[derive(
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Ord,
-    PartialOrd,
-    Hash,
-    Serialize,
-    Deserialize,
-    ValueEnum,
+    Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Serialize, ValueEnum,
 )]
 pub enum Severity {
     #[default]
@@ -29,13 +27,14 @@ pub enum Severity {
     Error,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default)]
 pub struct DiagnosticLine {
     pub line_number: usize,
     pub message: String,
+    pub highlights: Vec<(usize, usize)>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct Diagnostic {
     pub path: PathBuf,
     pub rule: &'static str,
@@ -54,6 +53,66 @@ impl std::fmt::Display for Severity {
             Severity::Error => "error".bright_red().bold(),
         };
         write!(f, "{s}")
+    }
+}
+
+impl Serialize for DiagnosticLine {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("DiagnosticLine", 3)?;
+        state.serialize_field("line_number", &self.line_number)?;
+        state.serialize_field("message", &self.message)?;
+        // Convert highlights from byte positions to character positions for serialization.
+        let hl: Vec<_> = self
+            .highlights
+            .iter()
+            .map(|(s, e)| {
+                (
+                    self.message[..*s].chars().count(),
+                    self.message[..*e].chars().count(),
+                )
+            })
+            .collect();
+        state.serialize_field("highlights", &hl)?;
+        state.end()
+    }
+}
+
+impl DiagnosticLine {
+    /// Highlight multiple substrings from `start` to `end` with the given text and background colors.
+    fn highlight_list_pos(s: &str, list_pos: &[(usize, usize)]) -> String {
+        let mut result = String::new();
+        let mut pos = 0;
+        for (start, end) in list_pos {
+            if *start < pos {
+                continue;
+            }
+            result.push_str(&s[pos..*start]);
+            result.push_str(
+                &s[*start..*end]
+                    .color(HIGHLIGHT_COLOR)
+                    .bold()
+                    .on_color(HIGHLIGHT_ON_COLOR)
+                    .to_string(),
+            );
+            pos = *end;
+        }
+        result.push_str(&s[pos..]);
+        result
+    }
+
+    /// Get the message with highlights applied.
+    fn message_hl_color(&self) -> Cow<'_, str> {
+        if self.highlights.is_empty() {
+            Cow::Borrowed(&self.message)
+        } else {
+            Cow::Owned(DiagnosticLine::highlight_list_pos(
+                &self.message,
+                &self.highlights,
+            ))
+        }
     }
 }
 
@@ -77,10 +136,11 @@ impl Diagnostic {
         }
     }
 
-    pub fn add_message(&mut self, line: usize, message: String) {
+    pub fn add_message(&mut self, line: usize, message: &str, highlights: &[(usize, usize)]) {
         self.lines.push(DiagnosticLine {
             line_number: line,
-            message,
+            message: message.to_string(),
+            highlights: highlights.to_vec(),
         });
     }
 
@@ -99,7 +159,7 @@ impl Diagnostic {
             return prefix_line;
         }
         let mut out = String::new();
-        for (idx, line) in line.message.lines().enumerate() {
+        for (idx, line) in line.message_hl_color().lines().enumerate() {
             if idx == 0 {
                 out.push_str(&prefix_line);
             } else {

@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -41,23 +40,37 @@ impl RuleChecker for TabsRule {
     /// - `missing tabs '\t' (# / #)`
     /// - `extra tabs '\t' (# / #)`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let id_tabs = msgid.matches('\t').count();
-        let str_tabs = msgstr.matches('\t').count();
-        match id_tabs.cmp(&str_tabs) {
+        let id_tabs: Vec<_> = msgid
+            .match_indices('\t')
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        let str_tabs: Vec<_> = msgstr
+            .match_indices('\t')
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        match id_tabs.len().cmp(&str_tabs.len()) {
             std::cmp::Ordering::Greater => {
                 checker.report_msg(
                     entry,
-                    format!("missing tabs '\\t' ({id_tabs} / {str_tabs})"),
-                    msgid.highlight_str("\t"),
-                    msgstr.highlight_str("\t"),
+                    format!(
+                        "missing tabs '\\t' ({} / {})",
+                        id_tabs.len(),
+                        str_tabs.len()
+                    ),
+                    msgid,
+                    &id_tabs,
+                    msgstr,
+                    &str_tabs,
                 );
             }
             std::cmp::Ordering::Less => {
                 checker.report_msg(
                     entry,
-                    format!("extra tabs '\\t' ({id_tabs} / {str_tabs})"),
-                    msgid.highlight_str("\t"),
-                    msgstr.highlight_str("\t"),
+                    format!("extra tabs '\\t' ({} / {})", id_tabs.len(), str_tabs.len()),
+                    msgid,
+                    &id_tabs,
+                    msgstr,
+                    &str_tabs,
                 );
             }
             std::cmp::Ordering::Equal => {}

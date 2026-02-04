@@ -9,13 +9,13 @@ use std::path::{Path, PathBuf};
 
 use colored::Colorize;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::args;
 use crate::dir::find_po_files;
 use crate::po::parser::Parser;
 
-#[derive(Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Serialize)]
 struct Entries {
     total: u64,
     translated: u64,
@@ -24,7 +24,7 @@ struct Entries {
     obsolete: u64,
 }
 
-#[derive(Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Serialize)]
 struct Counts {
     id_total: u64,
     id_translated: u64,
@@ -37,7 +37,7 @@ struct Counts {
     str_obsolete: u64,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize)]
 struct StatsFile {
     path: PathBuf,
     entries: Entries,

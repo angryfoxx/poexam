@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -71,8 +70,10 @@ impl RuleChecker for PuncStartRule {
             checker.report_msg(
                 entry,
                 format!("inconsistent leading punctuation ('{id_punc2}' / '{str_punc2}')"),
-                msgid.highlight_pos(0, id_punc.len()),
-                msgstr.highlight_pos(0, str_punc.len()),
+                msgid,
+                &[(0, id_punc.len())],
+                msgstr,
+                &[(0, str_punc.len())],
             );
         }
     }
@@ -131,8 +132,10 @@ impl RuleChecker for PuncEndRule {
             checker.report_msg(
                 entry,
                 format!("inconsistent trailing punctuation ('{id_punc2}' / '{str_punc2}')"),
-                msgid.highlight_pos(msgid.len() - id_punc.len(), msgid.len()),
-                msgstr.highlight_pos(msgstr.len() - str_punc.len(), msgstr.len()),
+                msgid,
+                &[(msgid.len() - id_punc.len(), msgid.len())],
+                msgstr,
+                &[(msgstr.len() - str_punc.len(), msgstr.len())],
             );
         }
     }

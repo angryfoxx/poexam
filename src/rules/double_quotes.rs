@@ -4,12 +4,10 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
 const DOUBLE_QUOTES: [char; 3] = ['"', '„', '”'];
-const DOUBLE_QUOTES_STR: [&str; 3] = ["\"", "„", "”"];
 
 pub struct DoubleQuotesRule {}
 
@@ -44,23 +42,41 @@ impl RuleChecker for DoubleQuotesRule {
     /// - `missing double quotes (# / #)`
     /// - `extra double quotes (# / #)`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let id_quotes = msgid.matches(DOUBLE_QUOTES).count();
-        let str_quotes = msgstr.matches(&DOUBLE_QUOTES).count();
-        match id_quotes.cmp(&str_quotes) {
+        let id_quotes: Vec<_> = msgid
+            .match_indices(DOUBLE_QUOTES)
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        let str_quotes: Vec<_> = msgstr
+            .match_indices(DOUBLE_QUOTES)
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        match id_quotes.len().cmp(&str_quotes.len()) {
             std::cmp::Ordering::Greater => {
                 checker.report_msg(
                     entry,
-                    format!("missing double quotes ({id_quotes} / {str_quotes})"),
-                    msgid.highlight_list_str(&DOUBLE_QUOTES_STR),
-                    msgstr.highlight_list_str(&DOUBLE_QUOTES_STR),
+                    format!(
+                        "missing double quotes ({} / {})",
+                        id_quotes.len(),
+                        str_quotes.len()
+                    ),
+                    msgid,
+                    &id_quotes,
+                    msgstr,
+                    &str_quotes,
                 );
             }
             std::cmp::Ordering::Less => {
                 checker.report_msg(
                     entry,
-                    format!("extra double quotes ({id_quotes} / {str_quotes})"),
-                    msgid.highlight_list_str(&DOUBLE_QUOTES_STR),
-                    msgstr.highlight_list_str(&DOUBLE_QUOTES_STR),
+                    format!(
+                        "extra double quotes ({} / {})",
+                        id_quotes.len(),
+                        str_quotes.len()
+                    ),
+                    msgid,
+                    &id_quotes,
+                    msgstr,
+                    &str_quotes,
                 );
             }
             std::cmp::Ordering::Equal => {}

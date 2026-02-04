@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ### Fixed
 
+- Remove color from JSON output, add field "highlights" (list of (start, end) positions in string)
 - Add support of full-width, Arabian, Greek and Persian punctuation
 - Sort errors by filename to have a predictable order
 

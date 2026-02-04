@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -41,23 +40,37 @@ impl RuleChecker for PipesRule {
     /// - `missing pipes '|' (# / #)`
     /// - `extra pipes '|' (# / #)`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let id_pipes = msgid.matches('|').count();
-        let str_pipes = msgstr.matches('|').count();
-        match id_pipes.cmp(&str_pipes) {
+        let id_pipes: Vec<_> = msgid
+            .match_indices('|')
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        let str_pipes: Vec<_> = msgstr
+            .match_indices('|')
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        match id_pipes.len().cmp(&str_pipes.len()) {
             std::cmp::Ordering::Greater => {
                 checker.report_msg(
                     entry,
-                    format!("missing pipes '|' ({id_pipes} / {str_pipes})"),
-                    msgid.highlight_str("|"),
-                    msgstr.highlight_str("|"),
+                    format!(
+                        "missing pipes '|' ({} / {})",
+                        id_pipes.len(),
+                        str_pipes.len()
+                    ),
+                    msgid,
+                    &id_pipes,
+                    msgstr,
+                    &str_pipes,
                 );
             }
             std::cmp::Ordering::Less => {
                 checker.report_msg(
                     entry,
-                    format!("extra pipes '|' ({id_pipes} / {str_pipes})"),
-                    msgid.highlight_str("|"),
-                    msgstr.highlight_str("|"),
+                    format!("extra pipes '|' ({} / {})", id_pipes.len(), str_pipes.len()),
+                    msgid,
+                    &id_pipes,
+                    msgstr,
+                    &str_pipes,
                 );
             }
             std::cmp::Ordering::Equal => {}

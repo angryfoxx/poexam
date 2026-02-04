@@ -16,8 +16,7 @@ use crate::{
     args,
     diagnostic::{Diagnostic, Severity},
     dir::find_po_files,
-    po::entry::Entry,
-    po::parser::Parser,
+    po::{entry::Entry, parser::Parser},
     rules::rule::{Rule, Rules, get_selected_rules},
 };
 
@@ -113,13 +112,21 @@ impl<'d, 'r> Checker<'d, 'r> {
             msgid_raw,
         );
         for (line_no, line) in entry.to_po_lines() {
-            diagnostic.add_message(line_no, line);
+            diagnostic.add_message(line_no, &line, &[]);
         }
         self.diagnostics.push(diagnostic);
     }
 
     /// Report a diagnostic for a given message of a PO entry (couple source/translated).
-    pub fn report_msg(&mut self, entry: &Entry, message: String, msgid: String, msgstr: String) {
+    pub fn report_msg(
+        &mut self,
+        entry: &Entry,
+        message: String,
+        msgid: &str,
+        hl_id: &[(usize, usize)],
+        msgstr: &str,
+        hl_str: &[(usize, usize)],
+    ) {
         let msgid_raw = if let Some(msgid) = &entry.msgid {
             msgid.value.clone()
         } else {
@@ -132,9 +139,9 @@ impl<'d, 'r> Checker<'d, 'r> {
             message,
             msgid_raw,
         );
-        diagnostic.add_message(self.current_line_id, msgid);
-        diagnostic.add_message(0, String::new());
-        diagnostic.add_message(self.current_line_str, msgstr);
+        diagnostic.add_message(self.current_line_id, msgid, hl_id);
+        diagnostic.add_message(0, "", &[]);
+        diagnostic.add_message(self.current_line_str, msgstr, hl_str);
         self.diagnostics.push(diagnostic);
     }
 

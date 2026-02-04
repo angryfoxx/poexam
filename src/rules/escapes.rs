@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -43,43 +42,79 @@ impl RuleChecker for EscapesRule {
     /// - `missing escaped escape characters '\' (# / #)`
     /// - `extra escaped escape characters '\' (# / #)`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let id_esc = msgid.matches("\\\\").count();
-        let str_esc = msgstr.matches("\\\\").count();
-        match id_esc.cmp(&str_esc) {
+        let id_esc: Vec<_> = msgid
+            .match_indices("\\\\")
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        let str_esc: Vec<_> = msgstr
+            .match_indices("\\\\")
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        match id_esc.len().cmp(&str_esc.len()) {
             std::cmp::Ordering::Greater => {
                 checker.report_msg(
                     entry,
-                    format!("missing escaped escape characters '\\\\' ({id_esc} / {str_esc})"),
-                    msgid.highlight_str("\\\\"),
-                    msgstr.highlight_str("\\\\"),
+                    format!(
+                        "missing escaped escape characters '\\\\' ({} / {})",
+                        id_esc.len(),
+                        str_esc.len()
+                    ),
+                    msgid,
+                    &id_esc,
+                    msgstr,
+                    &str_esc,
                 );
             }
             std::cmp::Ordering::Less => {
                 checker.report_msg(
                     entry,
-                    format!("extra escaped escape characters '\\\\' ({id_esc} / {str_esc})"),
-                    msgid.highlight_str("\\\\"),
-                    msgstr.highlight_str("\\\\"),
+                    format!(
+                        "extra escaped escape characters '\\\\' ({} / {})",
+                        id_esc.len(),
+                        str_esc.len()
+                    ),
+                    msgid,
+                    &id_esc,
+                    msgstr,
+                    &str_esc,
                 );
             }
             std::cmp::Ordering::Equal => {
-                let id_esc = msgid.matches('\\').count();
-                let str_esc = msgstr.matches('\\').count();
-                match id_esc.cmp(&str_esc) {
+                let id_esc: Vec<_> = msgid
+                    .match_indices('\\')
+                    .map(|(idx, value)| (idx, idx + value.len()))
+                    .collect();
+                let str_esc: Vec<_> = msgstr
+                    .match_indices('\\')
+                    .map(|(idx, value)| (idx, idx + value.len()))
+                    .collect();
+                match id_esc.len().cmp(&str_esc.len()) {
                     std::cmp::Ordering::Greater => {
                         checker.report_msg(
                             entry,
-                            format!("missing escape characters '\\' ({id_esc} / {str_esc})"),
-                            msgid.highlight_str("\\"),
-                            msgstr.highlight_str("\\"),
+                            format!(
+                                "missing escape characters '\\' ({} / {})",
+                                id_esc.len(),
+                                str_esc.len()
+                            ),
+                            msgid,
+                            &id_esc,
+                            msgstr,
+                            &str_esc,
                         );
                     }
                     std::cmp::Ordering::Less => {
                         checker.report_msg(
                             entry,
-                            format!("extra escape characters '\\' ({id_esc} / {str_esc})"),
-                            msgid.highlight_str("\\"),
-                            msgstr.highlight_str("\\"),
+                            format!(
+                                "extra escape characters '\\' ({} / {})",
+                                id_esc.len(),
+                                str_esc.len()
+                            ),
+                            msgid,
+                            &id_esc,
+                            msgstr,
+                            &str_esc,
                         );
                     }
                     std::cmp::Ordering::Equal => {}

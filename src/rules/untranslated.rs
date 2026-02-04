@@ -48,8 +48,10 @@ impl RuleChecker for UntranslatedRule {
             checker.report_msg(
                 entry,
                 "untranslated message".to_string(),
-                msgid.to_string(),
-                msgstr.to_string(),
+                msgid,
+                &[],
+                msgstr,
+                &[],
             );
         }
     }

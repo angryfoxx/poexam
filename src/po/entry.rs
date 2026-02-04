@@ -2,13 +2,13 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use std::collections::BTreeMap;
 
 use crate::{po::escape::EscapePoExt, po::message::Message};
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct Entry {
     pub line_number: usize,

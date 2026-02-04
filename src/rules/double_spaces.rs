@@ -4,7 +4,6 @@
 
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -41,23 +40,41 @@ impl RuleChecker for DoubleSpacesRule {
     /// - `missing double spaces '  ' (# / #)`
     /// - `extra double spaces '  ' (# / #)`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let id_quotes = msgid.matches("  ").count();
-        let str_quotes = msgstr.matches("  ").count();
-        match id_quotes.cmp(&str_quotes) {
+        let id_quotes: Vec<_> = msgid
+            .match_indices("  ")
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        let str_quotes: Vec<_> = msgstr
+            .match_indices("  ")
+            .map(|(idx, value)| (idx, idx + value.len()))
+            .collect();
+        match id_quotes.len().cmp(&str_quotes.len()) {
             std::cmp::Ordering::Greater => {
                 checker.report_msg(
                     entry,
-                    format!("missing double spaces '  ' ({id_quotes} / {str_quotes})"),
-                    msgid.highlight_str("  "),
-                    msgstr.highlight_str("  "),
+                    format!(
+                        "missing double spaces '  ' ({} / {})",
+                        id_quotes.len(),
+                        str_quotes.len()
+                    ),
+                    msgid,
+                    &id_quotes,
+                    msgstr,
+                    &str_quotes,
                 );
             }
             std::cmp::Ordering::Less => {
                 checker.report_msg(
                     entry,
-                    format!("extra double spaces '  ' ({id_quotes} / {str_quotes})"),
-                    msgid.highlight_str("  "),
-                    msgstr.highlight_str("  "),
+                    format!(
+                        "extra double spaces '  ' ({} / {})",
+                        id_quotes.len(),
+                        str_quotes.len()
+                    ),
+                    msgid,
+                    &id_quotes,
+                    msgstr,
+                    &str_quotes,
                 );
             }
             std::cmp::Ordering::Equal => {}

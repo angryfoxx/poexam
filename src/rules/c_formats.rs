@@ -5,7 +5,6 @@
 use crate::c_format::{CFormat, MatchCFormat};
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
-use crate::highlight::HighlightExt;
 use crate::po::entry::Entry;
 use crate::rules::rule::RuleChecker;
 
@@ -85,8 +84,10 @@ impl RuleChecker for CFormatsRule {
             checker.report_msg(
                 entry,
                 "inconsistent C format strings".to_string(),
-                msgid.highlight_list_pos(&pos_id),
-                msgstr.highlight_list_pos(&pos_str),
+                msgid,
+                &pos_id,
+                msgstr,
+                &pos_str,
             );
         }
     }
