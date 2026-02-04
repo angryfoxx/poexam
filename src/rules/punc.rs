@@ -201,7 +201,8 @@ fn get_punc_end(s: &str) -> &str {
     &s[s.len() - pos..]
 }
 
-/// Convert punctuation from full-width to normal width and collapse ellipsis.
+/// Normalize punctuation to English symbols: full-width to half-width and take care
+/// about specific cases in some languages.
 fn punc_normalize(s: &str, language: &str) -> String {
     s.chars()
         .map(|c| match c {
