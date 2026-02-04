@@ -263,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "poexam"
-version = "0.0.2-dev"
+version = "0.0.2"
 dependencies = [
  "clap",
  "colored",
