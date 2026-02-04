@@ -29,15 +29,16 @@ impl RuleChecker for PuncStartRule {
     /// (half-width and full-width):
     /// - colon: `:`, `：`
     /// - semicolon: `;`, `；`
-    /// - full stop (period): `.`, `。` or `…`
-    /// - comma: `,`, `，`
+    /// - full stop (period): `.`, `。`, `…`
+    /// - comma: `,`, `，`, `،`
     /// - exclamation mark: `!`, `！`
-    /// - question mark: `?`, `？`
+    /// - question mark: `?`, `？`, `؟`
     ///
-    /// The Greek question mark is `;` and is considered the same as `?` in other languages.
-    ///
-    /// Special case: leading dots in the source or translation are ignored, because they
-    /// are often used for hidden or filename extension.
+    /// Special cases handled:
+    /// - Greek: the question mark is `;`.
+    /// - Arabic and Persian: the question mark is `؟`.
+    /// - Leading dots in the source or translation are ignored, because they are often
+    ///   used for hidden or filename extension.
     ///
     /// Wrong entry:
     /// ```text
@@ -57,8 +58,8 @@ impl RuleChecker for PuncStartRule {
         let language = checker.language();
         let id_punc = get_punc_start(msgid);
         let str_punc = get_punc_start(msgstr);
-        let id_punc2 = punc_to_half_width(id_punc.trim(), language);
-        let str_punc2 = punc_to_half_width(str_punc.trim(), language);
+        let id_punc2 = punc_normalize(id_punc.trim(), language);
+        let str_punc2 = punc_normalize(str_punc.trim(), language);
         if id_punc2.starts_with('.') || str_punc2.starts_with('.') {
             // Ignore leading dots, often used for hidden or filename extension,
             // and the translation may change the order of words.
@@ -95,13 +96,18 @@ impl RuleChecker for PuncEndRule {
 
     /// Check for inconsistent trailing punctuation between source and translation.
     ///
-    /// The following characters are considered as punctuation for this check:
-    /// - colon: `:`
-    /// - semicolon: `;`
-    /// - full stop (period): `.`, `。` or `…`
-    /// - comma: `,`
-    /// - exclamation mark: `!`
-    /// - question mark: `?`
+    /// The following characters are considered as punctuation for this check
+    /// (half-width and full-width):
+    /// - colon: `:`, `：`
+    /// - semicolon: `;`, `；`
+    /// - full stop (period): `.`, `。`, `…`
+    /// - comma: `,`, `，`, `،`
+    /// - exclamation mark: `!`, `！`
+    /// - question mark: `?`, `？`, `؟`
+    ///
+    /// Special cases handled:
+    /// - Greek: the question mark is `;`.
+    /// - Arabic and Persian: the question mark is `؟`.
     ///
     /// Wrong entry:
     /// ```text
@@ -121,8 +127,8 @@ impl RuleChecker for PuncEndRule {
         let language = checker.language();
         let id_punc = get_punc_end(msgid);
         let str_punc = get_punc_end(msgstr);
-        let id_punc2 = punc_to_half_width(id_punc.trim(), language);
-        let str_punc2 = punc_to_half_width(str_punc.trim(), language);
+        let id_punc2 = punc_normalize(id_punc.trim(), language);
+        let str_punc2 = punc_normalize(str_punc.trim(), language);
         if id_punc2 != str_punc2 {
             checker.report_msg(
                 entry,
@@ -140,15 +146,18 @@ fn is_punc(c: char) -> bool {
         || c == '：'
         || c == ';'
         || c == '；'
+        || c == '؛'
         || c == '.'
         || c == '。'
         || c == '…'
         || c == ','
         || c == '，'
+        || c == '،'
         || c == '!'
         || c == '！'
         || c == '?'
         || c == '？'
+        || c == '؟'
 }
 
 /// Get the leading punctuation of a string (it includes whitespace).
@@ -193,18 +202,18 @@ fn get_punc_end(s: &str) -> &str {
 }
 
 /// Convert punctuation from full-width to normal width and collapse ellipsis.
-fn punc_to_half_width(s: &str, language: &str) -> String {
+fn punc_normalize(s: &str, language: &str) -> String {
     s.chars()
         .map(|c| match c {
-            // Convert full-width to half-width.
-            '：' => ':',
-            '；' => ';',
-            '。' => '.',
-            '，' => ',',
-            '！' => '!',
-            '？' => '?',
             // Special case for Greek question mark.
             '?' if language == "el" => ';',
+            // General punctuation normalization.
+            '：' => ':',
+            '；' | '؛' => ';',
+            '。' => '.',
+            '，' | '،' => ',',
+            '！' => '!',
+            '？' | '؟' => '?',
             _ => c,
         })
         .collect::<String>()
@@ -272,12 +281,12 @@ mod tests {
 
     #[test]
     fn test_punc_to_half_width() {
-        assert_eq!(punc_to_half_width("", "fr"), "");
-        assert_eq!(punc_to_half_width("test", "fr"), "test");
-        assert_eq!(punc_to_half_width("。，！？：；。。。", "zh"), ".,!?:;…");
-        assert_eq!(punc_to_half_width("?", "fr"), "?");
+        assert_eq!(punc_normalize("", "fr"), "");
+        assert_eq!(punc_normalize("test", "fr"), "test");
+        assert_eq!(punc_normalize("。，！？؟：；؛。。。", "zh"), ".,!??:;;…");
+        assert_eq!(punc_normalize("?", "fr"), "?");
         // Special case for Greek question mark.
-        assert_eq!(punc_to_half_width("?", "el"), ";");
+        assert_eq!(punc_normalize("?", "el"), ";");
     }
 
     #[test]

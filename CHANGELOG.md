@@ -10,7 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ### Fixed
 
-- Add support of full-width and Greek punctuation
+- Add support of full-width, Arabian, Greek and Persian punctuation
 - Sort errors by filename to have a predictable order
 
 ## Version 0.0.1
