@@ -146,12 +146,9 @@ impl Diagnostic {
 
     /// Format the diagnostic line (number + message) with colors for display.
     fn format_line(line: &DiagnosticLine) -> String {
-        let prefix_lf_empty = "        | ".bright_blue().bold().to_string();
+        let prefix_lf_empty = "        | ".cyan().to_string();
         let prefix_line = if line.line_number > 0 {
-            format!("{:7} | ", line.line_number)
-                .bright_blue()
-                .bold()
-                .to_string()
+            format!("{:7} | ", line.line_number).cyan().to_string()
         } else {
             prefix_lf_empty.clone()
         };
@@ -190,9 +187,9 @@ impl std::fmt::Display for Diagnostic {
             self.severity,
             self.rule,
             self.message,
-            "        |".bright_blue().bold(),
+            "        |".cyan(),
             list_lines.join("\n"),
-            "        |".bright_blue().bold(),
+            "        |".cyan(),
         )
     }
 }

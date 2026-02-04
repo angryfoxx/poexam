@@ -8,6 +8,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Version 0.0.2 (under dev)
 
+### Changed
+
+- Change line number color to cyan in diagnostic output
+
 ### Fixed
 
 - Remove color from JSON output, add field "highlights" (list of (start, end) positions in string)
