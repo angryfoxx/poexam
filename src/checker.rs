@@ -11,10 +11,12 @@ use std::{
 
 use colored::Colorize;
 use rayon::prelude::*;
+use spellbook::Dictionary;
 
 use crate::{
     args,
     diagnostic::{Diagnostic, Severity},
+    dict::get_dict,
     dir::find_po_files,
     po::{entry::Entry, parser::Parser},
     rules::rule::{Rule, Rules, get_selected_rules},
@@ -23,12 +25,16 @@ use crate::{
 #[derive(Default)]
 pub struct Checker<'d, 'r> {
     pub path: PathBuf,
+    pub dict_id: Option<Dictionary>,
+    pub dict_str: Option<Dictionary>,
     pub diagnostics: Vec<Diagnostic>,
     parser: Parser<'d>,
     rules: &'r Rules,
     check_fuzzy: bool,
     check_noqa: bool,
     check_obsolete: bool,
+    path_dicts: PathBuf,
+    lang_id: String,
     current_rule: &'static str,
     current_severity: Severity,
     current_line_id: usize,
@@ -69,20 +75,29 @@ impl<'d, 'r> Checker<'d, 'r> {
         self
     }
 
-    /// Get the language of the file being checked.
-    ///
-    /// Examples:
-    /// - `fr` -> `fr`
-    /// - `pt_BR` -> `pt`
+    /// Set the path to the hunspell dictionaries.
+    pub fn with_path_dicts(mut self, path_dicts: &Path) -> Self {
+        self.path_dicts = PathBuf::from(path_dicts);
+        self
+    }
+
+    /// Set the language used to check source strings.
+    pub fn with_lang_id(mut self, lang_id: &str) -> Self {
+        self.lang_id = lang_id.to_string();
+        self
+    }
+
+    /// Get the language of the file being checked (eg: `pt_BR`).
     pub fn language(&self) -> &str {
         &self.parser.language
     }
 
-    /// Get the country of the file being checked.
-    ///
-    /// Examples:
-    /// - `fr` -> empty string
-    /// - `pt_BR` -> `BR`
+    /// Get the language code of the file being checked (eg: `pt`).
+    pub fn language_code(&self) -> &str {
+        &self.parser.language_code
+    }
+
+    /// Get the country of the file being checked (eg: `BR`).
     pub fn country(&self) -> &str {
         &self.parser.country
     }
@@ -97,20 +112,25 @@ impl<'d, 'r> Checker<'d, 'r> {
         self.parser.nplurals()
     }
 
+    /// Report a diagnostic for the given PO file.
+    pub fn report_file(&mut self, rule: &'static str, severity: Severity, message: String) {
+        self.diagnostics.push(Diagnostic::new(
+            self.path.as_path(),
+            rule,
+            severity,
+            message,
+        ));
+    }
+
     /// Report a diagnostic for the given PO entry.
     pub fn report_entry(&mut self, message: String, entry: &Entry) {
-        let msgid_raw = if let Some(msgid) = &entry.msgid {
-            msgid.value.clone()
-        } else {
-            String::new()
-        };
         let mut diagnostic = Diagnostic::new(
             self.path.as_path(),
             self.current_rule,
             self.current_severity,
             message,
-            msgid_raw,
-        );
+        )
+        .with_msgid_raw(entry.msgid.as_ref().map(|msgid| msgid.value.clone()));
         for (line_no, line) in entry.to_po_lines() {
             diagnostic.add_message(line_no, &line, &[]);
         }
@@ -127,18 +147,13 @@ impl<'d, 'r> Checker<'d, 'r> {
         msgstr: &str,
         hl_str: &[(usize, usize)],
     ) {
-        let msgid_raw = if let Some(msgid) = &entry.msgid {
-            msgid.value.clone()
-        } else {
-            String::new()
-        };
         let mut diagnostic = Diagnostic::new(
             self.path.as_path(),
             self.current_rule,
             self.current_severity,
             message,
-            msgid_raw,
-        );
+        )
+        .with_msgid_raw(entry.msgid.as_ref().map(|msgid| msgid.value.clone()));
         diagnostic.add_message(self.current_line_id, msgid, hl_id);
         diagnostic.add_message(0, "", &[]);
         diagnostic.add_message(self.current_line_str, msgstr, hl_str);
@@ -181,9 +196,34 @@ impl<'d, 'r> Checker<'d, 'r> {
 
     /// Perform all checks on every entry of the PO file.
     pub fn do_all_checks(&mut self) {
+        if self.rules.spelling_id_rule {
+            self.dict_id = match get_dict(self.path_dicts.as_path(), &self.lang_id) {
+                Ok(dict) => Some(dict),
+                Err(err) => {
+                    self.report_file("spelling-id", Severity::Error, err.to_string());
+                    None
+                }
+            };
+        }
+        let mut error_dict_str = false;
         while let Some(entry) = self.parser.next() {
-            if entry.is_header()
-                || (!entry.is_translated() && !self.rules.untranslated_rule)
+            if entry.is_header() {
+                if self.rules.spelling_str_rule && self.dict_str.is_none() {
+                    self.dict_str = match get_dict(self.path_dicts.as_path(), &self.parser.language)
+                    {
+                        Ok(dict) => Some(dict),
+                        Err(err) => {
+                            if !error_dict_str {
+                                self.report_file("spelling-str", Severity::Error, err.to_string());
+                            }
+                            error_dict_str = true;
+                            None
+                        }
+                    };
+                }
+                continue;
+            }
+            if (!entry.is_translated() && !self.rules.untranslated_rule)
                 || (entry.fuzzy && !self.check_fuzzy && !self.rules.fuzzy_rule)
                 || (entry.noqa && !self.check_noqa)
                 || (entry.obsolete && !self.check_obsolete && !self.rules.obsolete_rule)
@@ -216,7 +256,6 @@ pub fn check_file(
                 "read-error",
                 Severity::Error,
                 "could not open file".to_string(),
-                String::new(),
             )],
         );
     };
@@ -229,7 +268,6 @@ pub fn check_file(
                 "read-error",
                 Severity::Error,
                 "could not read file".to_string(),
-                String::new(),
             )],
         );
     };
@@ -237,7 +275,9 @@ pub fn check_file(
         .with_path(path)
         .with_check_fuzzy(args.fuzzy)
         .with_check_noqa(args.noqa)
-        .with_check_obsolete(args.obsolete);
+        .with_check_obsolete(args.obsolete)
+        .with_path_dicts(&args.path_dicts)
+        .with_lang_id(&args.lang_id);
     checker.do_all_checks();
     (PathBuf::from(path.as_path()), checker.diagnostics)
 }
@@ -303,7 +343,7 @@ fn display_errors_human(result: &[(PathBuf, Vec<Diagnostic>)], args: &args::Chec
         args::CheckSort::Message => {
             diags.sort_by_key(|diag| {
                 (
-                    diag.msgid_raw.as_str(),
+                    diag.msgid_raw.as_ref(),
                     diag.path.as_path(),
                     diag.lines
                         .iter()

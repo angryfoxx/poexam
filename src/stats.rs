@@ -14,6 +14,7 @@ use serde::Serialize;
 use crate::args;
 use crate::dir::find_po_files;
 use crate::po::parser::Parser;
+use crate::words::WordPos;
 
 #[derive(Clone, Copy, Default, Serialize)]
 struct Entries {
@@ -391,10 +392,8 @@ impl StatsFile {
 }
 
 /// Count words in a given string.
-fn count_words(s: &str) -> u64 {
-    s.split(|c: char| c.is_ascii_punctuation() || c.is_whitespace())
-        .filter(|s| !s.is_empty())
-        .count() as u64
+fn count_words(s: &str, format: &str) -> u64 {
+    WordPos::new(s, format).count() as u64
 }
 
 /// Count characters (non-whitespace or punctuation) in a given string.
@@ -421,7 +420,7 @@ fn stats_file(path: &PathBuf, args: &args::StatsArgs) -> Result<StatsFile, std::
             && let Some(msgid) = &entry.msgid
         {
             (
-                count_words(msgid.value.as_str()),
+                count_words(msgid.value.as_str(), &entry.format),
                 count_chars(msgid.value.as_str()),
             )
         } else {
@@ -431,7 +430,7 @@ fn stats_file(path: &PathBuf, args: &args::StatsArgs) -> Result<StatsFile, std::
             && let Some(msgstr) = entry.msgstr.get(&0)
         {
             (
-                count_words(msgstr.value.as_str()),
+                count_words(msgstr.value.as_str(), &entry.format),
                 count_chars(msgstr.value.as_str()),
             )
         } else {

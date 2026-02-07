@@ -10,18 +10,22 @@ use crate::{
     po::entry::Entry,
     rules::{
         blank, brackets, c_formats, double_quotes, double_spaces, encoding, escapes, fuzzy,
-        newlines, obsolete, pipes, plurals, punc, tabs, unchanged, untranslated, whitespace,
+        newlines, obsolete, pipes, plurals, punc, spelling, tabs, unchanged, untranslated,
+        whitespace,
     },
 };
 
 pub type Rule = Box<dyn RuleChecker + Sync>;
 
 #[derive(Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Rules {
     pub enabled: Vec<Rule>,
     pub fuzzy_rule: bool,
     pub obsolete_rule: bool,
     pub untranslated_rule: bool,
+    pub spelling_id_rule: bool,
+    pub spelling_str_rule: bool,
 }
 
 impl<'a> Default for &'a Rules {
@@ -31,6 +35,8 @@ impl<'a> Default for &'a Rules {
             fuzzy_rule: false,
             obsolete_rule: false,
             untranslated_rule: false,
+            spelling_id_rule: false,
+            spelling_str_rule: false,
         };
         &RULES
     }
@@ -47,11 +53,15 @@ impl Rules {
         let fuzzy_rule = rules.iter().any(|r| r.name() == "fuzzy");
         let obsolete_rule = rules.iter().any(|r| r.name() == "obsolete");
         let untranslated_rule = rules.iter().any(|r| r.name() == "untranslated");
+        let spelling_id_rule = rules.iter().any(|r| r.name() == "spelling-id");
+        let spelling_str_rule = rules.iter().any(|r| r.name() == "spelling-str");
         Self {
             enabled: rules,
             fuzzy_rule,
             obsolete_rule,
             untranslated_rule,
+            spelling_id_rule,
+            spelling_str_rule,
         }
     }
 }
@@ -80,6 +90,8 @@ pub fn get_all_rules() -> Vec<Rule> {
         Box::new(plurals::PluralsRule {}),
         Box::new(punc::PuncEndRule {}),
         Box::new(punc::PuncStartRule {}),
+        Box::new(spelling::SpellingIdRule {}),
+        Box::new(spelling::SpellingStrRule {}),
         Box::new(tabs::TabsRule {}),
         Box::new(unchanged::UnchangedRule {}),
         Box::new(untranslated::UntranslatedRule {}),

@@ -16,6 +16,7 @@ pub mod pipes;
 pub mod plurals;
 pub mod punc;
 pub mod rule;
+pub mod spelling;
 pub mod tabs;
 pub mod unchanged;
 pub mod untranslated;

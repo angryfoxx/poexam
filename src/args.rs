@@ -8,6 +8,9 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::diagnostic::Severity;
 
+pub const DEFAULT_PATH_DICTS: &str = "/usr/share/hunspell";
+pub const DEFAULT_LANG_ID: &str = "en_US";
+
 #[derive(Debug, Parser)]
 #[command(
     author,
@@ -64,6 +67,14 @@ pub struct CheckArgs {
     /// Ignore rules (comma-separated list)
     #[arg(short, long)]
     pub ignore: Option<String>,
+
+    /// Path to hunspell dictionaries
+    #[arg(long, default_value = DEFAULT_PATH_DICTS)]
+    pub path_dicts: PathBuf,
+
+    /// Language used to check source strings
+    #[arg(long, default_value = DEFAULT_LANG_ID)]
+    pub lang_id: String,
 
     /// Perform only checks with this severity (can be given multiple times); by default all checks are performed
     #[arg(short = 'e', long, value_enum)]

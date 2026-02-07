@@ -53,7 +53,7 @@ impl RuleChecker for PuncStartRule {
     /// Diagnostics reported with severity [`info`](Severity::Info):
     /// - `inconsistent leading punctuation ('…' / '…')`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let language = checker.language();
+        let language = checker.language_code();
         let id_punc = get_punc_start(msgid);
         let str_punc = get_punc_start(msgstr);
         let id_punc2 = punc_normalize(id_punc.trim(), language);
@@ -123,7 +123,7 @@ impl RuleChecker for PuncEndRule {
     /// Diagnostics reported with severity [`info`](Severity::Info):
     /// - `inconsistent trailing punctuation ('…' / '…')`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let language = checker.language();
+        let language = checker.language_code();
         let id_punc = get_punc_end(msgid);
         let str_punc = get_punc_end(msgstr);
         let id_punc2 = punc_normalize(id_punc.trim(), language);

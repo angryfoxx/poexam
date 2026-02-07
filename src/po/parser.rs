@@ -25,6 +25,7 @@ pub struct Parser<'a> {
     pub data: &'a [u8],
     pub data_len: usize,
     pub language: String,
+    pub language_code: String,
     pub country: String,
     pub encoding: Option<&'static Encoding>,
     pub nplurals: u32,
@@ -104,11 +105,12 @@ impl<'d> Parser<'d> {
             let (keyword, value) = line.split_once(':').unwrap_or(("", ""));
             let kw_lower = keyword.trim().to_lowercase();
             if kw_lower == "language" {
+                self.language = value.trim().to_string();
                 if let Some(pos) = value.find('_') {
-                    self.language = value[..pos].trim().to_string();
+                    self.language_code = value[..pos].trim().to_string();
                     self.country = value[pos + 1..].trim().to_string();
                 } else {
-                    self.language = value.trim().to_string();
+                    self.language_code = self.language.clone();
                 }
             } else if kw_lower == "content-type"
                 && let Some(pos) = value.find("charset=")
@@ -328,6 +330,7 @@ msgstr "test\n"
             .as_ref()
         );
         assert_eq!(parser.language, "fr");
+        assert_eq!(parser.language_code, "fr");
         assert_eq!(parser.country, "");
         assert!(parser.encoding.is_none());
 
@@ -337,7 +340,8 @@ msgstr "Language: pt_BR\n"
 "#;
         let mut parser = Parser::new(content.as_bytes());
         let _ = parser.by_ref().collect::<Vec<Entry>>();
-        assert_eq!(parser.language, "pt");
+        assert_eq!(parser.language, "pt_BR");
+        assert_eq!(parser.language_code, "pt");
         assert_eq!(parser.country, "BR");
     }
 

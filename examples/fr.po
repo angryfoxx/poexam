@@ -52,9 +52,9 @@ msgstr "Test deux lignes"
 
 # rule: pipes
 msgid ""
-"list || add <name> || rename <name> <newname> || del <name>"
+"list || add <name> || rename <name> <new_name> || del <name>"
 msgstr ""
-"list || add <nom> || rename <nom> <nouveaunom> del <nom>"
+"list || add <nom> || rename <nom> <nouveau_nom> del <nom>"
 
 # rule: plurals
 msgid "%d file"
@@ -99,3 +99,11 @@ msgstr ""
 # rule: obsolete
 #~ msgid "Obsolete entry"
 #~ msgstr "Entrée obsolète"
+
+# rule: spell-id
+msgid "This is a tyypo"
+msgstr "Ceci est une faute"
+
+# rule: spell-str
+msgid "This is a typo"
+msgstr "Ceci est une fôte"

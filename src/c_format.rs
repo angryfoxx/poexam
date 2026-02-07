@@ -5,6 +5,7 @@
 pub struct CFormat<'a> {
     s: &'a str,
     bytes: &'a [u8],
+    len: usize,
     pos: usize,
 }
 
@@ -17,9 +18,12 @@ pub struct MatchCFormat<'a> {
 
 impl<'a> CFormat<'a> {
     pub fn new(s: &'a str) -> Self {
+        let bytes = s.as_bytes();
+        let len = bytes.len();
         Self {
             s,
-            bytes: s.as_bytes(),
+            bytes,
+            len,
             pos: 0,
         }
     }
@@ -85,12 +89,60 @@ impl PartialOrd for MatchCFormat<'_> {
     }
 }
 
+/// Get the index of the end of a C format string.
+///
+/// `start` is the index of the first character of the format string (after `%`).
+/// `len` is the length of `bytes`.
+pub fn get_index_end_c_format(bytes: &[u8], start: usize, len: usize) -> usize {
+    let mut pos = start;
+
+    // Skip flags / width / precision / reordering.
+    while pos < len {
+        if matches!(
+            bytes[pos],
+            b'-' | b'+' | b' ' | b'#' | b'.' | b'$' | b'0'..=b'9'
+        ) {
+            pos += 1;
+        } else {
+            break;
+        }
+    }
+
+    // Parse length modifiers (h, hh, l, ll, q, L, j, z, Z, t).
+    if pos < len {
+        match bytes[pos] {
+            b'h' => {
+                pos += 1;
+                if pos < len && bytes[pos] == b'h' {
+                    pos += 1;
+                }
+            }
+            b'l' => {
+                pos += 1;
+                if pos < len && bytes[pos] == b'l' {
+                    pos += 1;
+                }
+            }
+            b'q' | b'L' | b'j' | b'z' | b'Z' | b't' => {
+                pos += 1;
+            }
+            _ => {}
+        }
+    }
+
+    // Parse conversion specifier (e.g. s, d, f, etc.).
+    if pos < len && bytes[pos].is_ascii_alphabetic() {
+        pos += 1;
+    }
+
+    pos
+}
+
 impl<'a> Iterator for CFormat<'a> {
     type Item = MatchCFormat<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let len = self.bytes.len();
-        while self.pos < len {
+        while self.pos < self.len {
             if self.bytes[self.pos] != b'%' {
                 self.pos += 1;
                 continue;
@@ -99,52 +151,18 @@ impl<'a> Iterator for CFormat<'a> {
             self.pos += 1;
 
             // Handle escaped "%%".
-            if self.pos < len && self.bytes[self.pos] == b'%' {
+            if self.pos < self.len && self.bytes[self.pos] == b'%' {
                 self.pos += 1;
                 continue;
             }
 
-            // Skip flags / width / precision / reordering.
-            while self.pos < len {
-                let b = self.bytes[self.pos];
-                if matches!(b, b'-' | b'+' | b' ' | b'#' | b'.' | b'$' | b'0'..=b'9') {
-                    self.pos += 1;
-                } else {
-                    break;
-                }
-            }
+            self.pos = get_index_end_c_format(self.bytes, self.pos, self.len);
 
-            // Parse length modifiers (h, hh, l, ll, q, L, j, z, Z, t).
-            if self.pos < len {
-                match self.bytes[self.pos] {
-                    b'h' => {
-                        self.pos += 1;
-                        if self.pos < len && self.bytes[self.pos] == b'h' {
-                            self.pos += 1;
-                        }
-                    }
-                    b'l' => {
-                        self.pos += 1;
-                        if self.pos < len && self.bytes[self.pos] == b'l' {
-                            self.pos += 1;
-                        }
-                    }
-                    b'q' | b'L' | b'j' | b'z' | b'Z' | b't' => {
-                        self.pos += 1;
-                    }
-                    _ => {}
-                }
-            }
-
-            // Return format including the conversion specifier (e.g. s, d, f, etc.).
-            if self.pos < len {
-                self.pos += 1;
-                return Some(MatchCFormat {
-                    format: &self.s[start..self.pos],
-                    start,
-                    end: self.pos,
-                });
-            }
+            return Some(MatchCFormat {
+                format: &self.s[start..self.pos],
+                start,
+                end: self.pos,
+            });
         }
         None
     }
@@ -202,6 +220,32 @@ mod tests {
     fn test_no_format() {
         let s = "Hello, world!";
         let mut cf = CFormat::new(s);
+        assert!(cf.next().is_none());
+    }
+
+    #[test]
+    fn test_invalid() {
+        let s = "%";
+        let mut cf = CFormat::new(s);
+        assert_eq!(
+            cf.next(),
+            Some(MatchCFormat {
+                format: "%",
+                start: 0,
+                end: 1
+            })
+        );
+        assert!(cf.next().is_none());
+        let s = "%é";
+        let mut cf = CFormat::new(s);
+        assert_eq!(
+            cf.next(),
+            Some(MatchCFormat {
+                format: "%",
+                start: 0,
+                end: 1
+            })
+        );
         assert!(cf.next().is_none());
     }
 

@@ -60,7 +60,8 @@ It can perform a lot of checks via the default rules:
 | whitespace-end   | info     | Missing/extra whitespace at the end.   |
 | whitespace-start | info     | Missing/extra whitespace at the start. |
 
- Some extra rules are not used by default because they are not really "checks" or report too many false positives.
+ Some extra rules are not used by default because they are not really "checks",
+ report too many false positives or can slow down the process.
 
  You can enable them on-demand:
 
@@ -68,6 +69,8 @@ It can perform a lot of checks via the default rules:
 |--------------|----------|-----------------------------------------------|
 | fuzzy        | info     | Fuzzy entry.                                  |
 | obsolete     | info     | Obsolete entry.                               |
+| spelling-id  | info     | Spelling error in the source string.          |
+| spelling-str | info     | Spelling error in the translated string.      |
 | unchanged    | info     | Translation is the same as the source string. |
 | untranslated | info     | Untranslated entry.                           |
 
@@ -163,7 +166,6 @@ Total                7706             81268             56175     369832        
 
 ## Roadmap
 
-- [ ] Add spell checking for source and translated strings.
 - [ ] Add new rules.
 - [ ] Add support for custom rules and checks.
 - [ ] Add a server mode to integrate with IDEs and text editors.

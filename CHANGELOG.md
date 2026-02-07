@@ -8,9 +8,13 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Version 0.0.3 (under dev)
 
+### Added
+
+- Add rules "spelling-id" and "spelling-str"
+
 ### Fixed
 
-- Fix detection of C formats in strings
+- Fix detection of C formats in strings, fix panic in case of invalid format
 
 ## Version 0.0.2 (2026-02-04)
 

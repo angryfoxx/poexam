@@ -40,7 +40,7 @@ pub struct Diagnostic {
     pub rule: &'static str,
     pub severity: Severity,
     pub message: String,
-    pub msgid_raw: String,
+    pub msgid_raw: Option<String>,
     pub lines: Vec<DiagnosticLine>,
 }
 
@@ -119,21 +119,19 @@ impl DiagnosticLine {
 impl Diagnostic {
     /// Create a new `Diagnostic` with the given path, severity, and message.
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        path: &Path,
-        rule: &'static str,
-        severity: Severity,
-        message: String,
-        msgid_raw: String,
-    ) -> Self {
+    pub fn new(path: &Path, rule: &'static str, severity: Severity, message: String) -> Self {
         Self {
             path: PathBuf::from(path),
             rule,
             severity,
             message,
-            msgid_raw,
             ..Default::default()
         }
+    }
+
+    pub fn with_msgid_raw(mut self, msgid_raw: Option<String>) -> Self {
+        self.msgid_raw = msgid_raw;
+        self
     }
 
     pub fn add_message(&mut self, line: usize, message: &str, highlights: &[(usize, usize)]) {
@@ -167,6 +165,22 @@ impl Diagnostic {
         }
         out
     }
+
+    fn format_lines(&self) -> String {
+        if self.lines.is_empty() {
+            "\n".to_string()
+        } else {
+            let mut list_lines = Vec::with_capacity(self.lines.len() + 2);
+            list_lines.push(String::new());
+            list_lines.push("        |".cyan().to_string());
+            for line in &self.lines {
+                list_lines.push(Diagnostic::format_line(line));
+            }
+            list_lines.push("        |".cyan().to_string());
+            list_lines.push(String::new());
+            list_lines.join("\n")
+        }
+    }
 }
 
 impl std::fmt::Display for Diagnostic {
@@ -176,20 +190,14 @@ impl std::fmt::Display for Diagnostic {
             Some(line) => format!(":{}", line.line_number),
             None => String::new(),
         };
-        let mut list_lines = Vec::with_capacity(self.lines.len());
-        for line in &self.lines {
-            list_lines.push(Diagnostic::format_line(line));
-        }
         write!(
             f,
-            "{}{str_first_line}: [{}:{}] {}\n{}\n{}\n{}\n",
+            "{}{str_first_line}: [{}:{}] {}{}",
             self.path.display().to_string().white().bold(),
             self.severity,
             self.rule,
             self.message,
-            "        |".cyan(),
-            list_lines.join("\n"),
-            "        |".cyan(),
+            self.format_lines(),
         )
     }
 }
