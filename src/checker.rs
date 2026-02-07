@@ -344,12 +344,11 @@ fn display_errors_human(result: &[(PathBuf, Vec<Diagnostic>)], args: &args::Chec
             });
         }
         args::CheckSort::Rule => {
-            diags.sort_by_key(|error| {
+            diags.sort_by_key(|diag| {
                 (
-                    error.rule,
-                    error.path.as_path(),
-                    error
-                        .lines
+                    diag.rule,
+                    diag.path.as_path(),
+                    diag.lines
                         .iter()
                         .map(|l| l.line_number)
                         .collect::<Vec<usize>>(),
