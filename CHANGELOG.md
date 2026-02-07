@@ -16,6 +16,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 ### Fixed
 
 - Fix detection of C formats in strings, fix panic in case of invalid format
+- Skip C format strings in count of words and characters
 
 ## Version 0.0.2 (2026-02-04)
 
