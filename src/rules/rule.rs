@@ -121,7 +121,7 @@ pub fn get_unknown_rules<'a>(
         .difference(all_rules_names)
         .copied()
         .collect();
-    // Some special rules like "all" and "check" are always known, we just ignore them.
+    // Some special rules like "all" and "checks" are always known, we just ignore them.
     for name in SPECIAL_RULES {
         unknown_rules_names.remove(name);
     }
