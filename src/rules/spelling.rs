@@ -143,7 +143,9 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::{args::DEFAULT_LANG_ID, diagnostic::Diagnostic, rules::rule::Rules};
+    use crate::{
+        args::DEFAULT_LANG_ID, diagnostic::Diagnostic, dict::get_dict, rules::rule::Rules,
+    };
 
     fn check_spelling(content: &str) -> Vec<Diagnostic> {
         let rules = Rules::new(vec![
@@ -152,9 +154,10 @@ mod tests {
         ]);
         let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_dir.push("resources/test");
+        let dict_id = get_dict(test_dir.as_path(), DEFAULT_LANG_ID).unwrap();
         let mut checker = Checker::new(content.as_bytes(), &rules)
             .with_path_dicts(test_dir.as_path())
-            .with_lang_id(DEFAULT_LANG_ID);
+            .with_dict_id(Some(&dict_id));
         checker.do_all_checks();
         checker.diagnostics
     }

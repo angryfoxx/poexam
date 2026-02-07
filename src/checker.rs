@@ -23,9 +23,9 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct Checker<'d, 'r> {
+pub struct Checker<'d, 'r, 't> {
     pub path: PathBuf,
-    pub dict_id: Option<Dictionary>,
+    pub dict_id: Option<&'t Dictionary>,
     pub dict_str: Option<Dictionary>,
     pub diagnostics: Vec<Diagnostic>,
     parser: Parser<'d>,
@@ -34,14 +34,13 @@ pub struct Checker<'d, 'r> {
     check_noqa: bool,
     check_obsolete: bool,
     path_dicts: PathBuf,
-    lang_id: String,
     current_rule: &'static str,
     current_severity: Severity,
     current_line_id: usize,
     current_line_str: usize,
 }
 
-impl<'d, 'r> Checker<'d, 'r> {
+impl<'d, 'r, 't> Checker<'d, 'r, 't> {
     /// Create a new `Checker` for the given data and rules.
     pub fn new(data: &'d [u8], rules: &'r Rules) -> Self {
         Checker {
@@ -54,6 +53,12 @@ impl<'d, 'r> Checker<'d, 'r> {
     /// Set the path of the file being checked.
     pub fn with_path(mut self, path: &Path) -> Self {
         self.path = PathBuf::from(path);
+        self
+    }
+
+    /// Set the dictionary for English language.
+    pub fn with_dict_id(mut self, dict_id: Option<&'t Dictionary>) -> Self {
+        self.dict_id = dict_id;
         self
     }
 
@@ -78,12 +83,6 @@ impl<'d, 'r> Checker<'d, 'r> {
     /// Set the path to the hunspell dictionaries.
     pub fn with_path_dicts(mut self, path_dicts: &Path) -> Self {
         self.path_dicts = PathBuf::from(path_dicts);
-        self
-    }
-
-    /// Set the language used to check source strings.
-    pub fn with_lang_id(mut self, lang_id: &str) -> Self {
-        self.lang_id = lang_id.to_string();
         self
     }
 
@@ -196,15 +195,6 @@ impl<'d, 'r> Checker<'d, 'r> {
 
     /// Perform all checks on every entry of the PO file.
     pub fn do_all_checks(&mut self) {
-        if self.rules.spelling_id_rule {
-            self.dict_id = match get_dict(self.path_dicts.as_path(), &self.lang_id) {
-                Ok(dict) => Some(dict),
-                Err(err) => {
-                    self.report_file("spelling-id", Severity::Error, err.to_string());
-                    None
-                }
-            };
-        }
         let mut error_dict_str = false;
         while let Some(entry) = self.parser.next() {
             if entry.is_header() {
@@ -247,6 +237,7 @@ pub fn check_file(
     path: &PathBuf,
     args: &args::CheckArgs,
     rules: &Rules,
+    dict_id: Option<&Dictionary>,
 ) -> (PathBuf, Vec<Diagnostic>) {
     let Ok(mut file) = File::open(path) else {
         return (
@@ -273,11 +264,11 @@ pub fn check_file(
     };
     let mut checker = Checker::new(&buf, rules)
         .with_path(path)
+        .with_dict_id(dict_id)
         .with_check_fuzzy(args.fuzzy)
         .with_check_noqa(args.noqa)
         .with_check_obsolete(args.obsolete)
-        .with_path_dicts(&args.path_dicts)
-        .with_lang_id(&args.lang_id);
+        .with_path_dicts(&args.path_dicts);
     checker.do_all_checks();
     (PathBuf::from(path.as_path()), checker.diagnostics)
 }
@@ -478,16 +469,27 @@ pub fn run_check(args: &args::CheckArgs) -> i32 {
     let start = std::time::Instant::now();
     let rules = match get_selected_rules(args) {
         Ok(selected_rules) => selected_rules,
-        Err(e) => {
-            eprintln!("{}: {e}", "Error".bright_red().bold());
+        Err(err) => {
+            eprintln!("{}: {err}", "Error".bright_red().bold());
             return 1;
         }
     };
     display_settings(args, &rules);
     let po_files = find_po_files(&args.files);
+    let dict_id = if rules.spelling_id_rule {
+        match get_dict(args.path_dicts.as_path(), &args.lang_id) {
+            Ok(dict) => Some(dict),
+            Err(err) => {
+                eprintln!("{}: {err}", "Warning".yellow());
+                None
+            }
+        }
+    } else {
+        None
+    };
     let result: Vec<(PathBuf, Vec<Diagnostic>)> = po_files
         .par_iter()
-        .map(|f| check_file(f, args, &rules))
+        .map(|f| check_file(f, args, &rules, dict_id.as_ref()))
         .collect();
     let elapsed = start.elapsed();
     display_result(&result, args, &elapsed)
