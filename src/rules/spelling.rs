@@ -4,6 +4,8 @@
 
 use std::collections::HashSet;
 
+use spellbook::Dictionary;
+
 use crate::checker::Checker;
 use crate::diagnostic::Severity;
 use crate::po::entry::Entry;
@@ -25,7 +27,7 @@ impl RuleChecker for SpellingCtxtRule {
         Severity::Info
     }
 
-    /// Check spelling in the context stirng (English).
+    /// Check spelling in the context string (English).
     ///
     /// Wrong entry:
     /// ```text
@@ -44,34 +46,19 @@ impl RuleChecker for SpellingCtxtRule {
     /// Diagnostics reported with severity [`warning`](Severity::Info):
     /// - `misspelled words in context: xxx`
     fn check_ctxt(&self, checker: &mut Checker, entry: &Entry, msgctxt: &str) {
-        let mut misspelled_words: Vec<&str> = Vec::new();
-        let mut hash_words: HashSet<&str> = HashSet::new();
-        let mut pos_words = Vec::new();
         if let Some(dict) = &checker.dict_id {
-            for (start, end) in WordPos::new(msgctxt, &entry.format) {
-                let word = &msgctxt[start..end];
-                if hash_words.contains(word) {
-                    pos_words.push((start, end));
-                } else {
-                    hash_words.insert(word);
-                    if !dict.check(word) {
-                        misspelled_words.push(word);
-                        pos_words.push((start, end));
-                    }
-                }
+            let (misspelled_words, pos_words) = check_words(entry, msgctxt, dict);
+            if !misspelled_words.is_empty() {
+                checker.report_ctxt(
+                    entry,
+                    format!(
+                        "misspelled words in context: {}",
+                        misspelled_words.join(", ")
+                    ),
+                    msgctxt,
+                    &pos_words,
+                );
             }
-        }
-        if !misspelled_words.is_empty() {
-            misspelled_words.sort_unstable();
-            checker.report_ctxt(
-                entry,
-                format!(
-                    "misspelled words in context: {}",
-                    misspelled_words.join(", ")
-                ),
-                msgctxt,
-                &pos_words,
-            );
         }
     }
 }
@@ -91,7 +78,7 @@ impl RuleChecker for SpellingIdRule {
         Severity::Info
     }
 
-    /// Check spelling in the source stirng (English).
+    /// Check spelling in the source string (English).
     ///
     /// Wrong entry:
     /// ```text
@@ -108,36 +95,21 @@ impl RuleChecker for SpellingIdRule {
     /// Diagnostics reported with severity [`warning`](Severity::Info):
     /// - `misspelled words in source: xxx`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let mut misspelled_words: Vec<&str> = Vec::new();
-        let mut hash_words: HashSet<&str> = HashSet::new();
-        let mut pos_words = Vec::new();
         if let Some(dict) = &checker.dict_id {
-            for (start, end) in WordPos::new(msgid, &entry.format) {
-                let word = &msgid[start..end];
-                if hash_words.contains(word) {
-                    pos_words.push((start, end));
-                } else {
-                    hash_words.insert(word);
-                    if !dict.check(word) {
-                        misspelled_words.push(word);
-                        pos_words.push((start, end));
-                    }
-                }
+            let (misspelled_words, pos_words) = check_words(entry, msgid, dict);
+            if !misspelled_words.is_empty() {
+                checker.report_msg(
+                    entry,
+                    format!(
+                        "misspelled words in source: {}",
+                        misspelled_words.join(", ")
+                    ),
+                    msgid,
+                    &pos_words,
+                    msgstr,
+                    &[],
+                );
             }
-        }
-        if !misspelled_words.is_empty() {
-            misspelled_words.sort_unstable();
-            checker.report_msg(
-                entry,
-                format!(
-                    "misspelled words in source: {}",
-                    misspelled_words.join(", ")
-                ),
-                msgid,
-                &pos_words,
-                msgstr,
-                &[],
-            );
         }
     }
 }
@@ -174,38 +146,50 @@ impl RuleChecker for SpellingStrRule {
     /// Diagnostics reported with severity [`warning`](Severity::Info):
     /// - `misspelled words in translation: xxx`
     fn check_msg(&self, checker: &mut Checker, entry: &Entry, msgid: &str, msgstr: &str) {
-        let mut misspelled_words: Vec<&str> = Vec::new();
-        let mut hash_words: HashSet<&str> = HashSet::new();
-        let mut pos_words = Vec::new();
         if let Some(dict) = &checker.dict_str {
-            for (start, end) in WordPos::new(msgstr, &entry.format) {
-                let word = &msgstr[start..end];
-                if hash_words.contains(word) {
-                    pos_words.push((start, end));
-                } else {
-                    hash_words.insert(word);
-                    if !dict.check(word) {
-                        misspelled_words.push(word);
-                        pos_words.push((start, end));
-                    }
-                }
+            let (misspelled_words, pos_words) = check_words(entry, msgstr, dict);
+            if !misspelled_words.is_empty() {
+                checker.report_msg(
+                    entry,
+                    format!(
+                        "misspelled words in translation: {}",
+                        misspelled_words.join(", ")
+                    ),
+                    msgid,
+                    &[],
+                    msgstr,
+                    &pos_words,
+                );
             }
         }
-        if !misspelled_words.is_empty() {
-            misspelled_words.sort_unstable();
-            checker.report_msg(
-                entry,
-                format!(
-                    "misspelled words in translation: {}",
-                    misspelled_words.join(", ")
-                ),
-                msgid,
-                &[],
-                msgstr,
-                &pos_words,
-            );
+    }
+}
+
+fn check_words<'s>(
+    entry: &Entry,
+    s: &'s str,
+    dict: &Dictionary,
+) -> (Vec<&'s str>, Vec<(usize, usize)>) {
+    let mut misspelled_words: HashSet<&str> = HashSet::new();
+    let mut hash_words: HashSet<&str> = HashSet::new();
+    let mut pos_words = Vec::new();
+    for (start, end) in WordPos::new(s, &entry.format) {
+        let word = &s[start..end];
+        if hash_words.contains(word) {
+            if misspelled_words.contains(word) {
+                pos_words.push((start, end));
+            }
+        } else {
+            hash_words.insert(word);
+            if !dict.check(word) {
+                misspelled_words.insert(word);
+                pos_words.push((start, end));
+            }
         }
     }
+    let mut list_words = misspelled_words.iter().copied().collect::<Vec<_>>();
+    list_words.sort_unstable();
+    (list_words, pos_words)
 }
 
 #[cfg(test)]

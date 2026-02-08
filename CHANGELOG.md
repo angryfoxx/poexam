@@ -6,6 +6,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Poexam ChangeLog
 
+## Version 0.0.5 (2026-02-08)
+
+### Fixed
+
+- Fix highlight of misspelled words
+
 ## Version 0.0.4 (2026-02-08)
 
 ### Fixed
