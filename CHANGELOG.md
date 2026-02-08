@@ -23,6 +23,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 - Fix detection of C formats in strings, fix panic in case of invalid format
 - Skip C format strings in count of words and characters
 - Fix message when no files are checked
+- Sort file status by path (option `--file-status`)
 
 ## Version 0.0.2 (2026-02-04)
 

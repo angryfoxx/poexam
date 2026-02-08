@@ -440,6 +440,7 @@ fn display_result(
                     display_diagnostics_human(result, args);
                 }
                 if args.file_status {
+                    file_errors.sort();
                     for (filename, info, warnings, errors) in file_errors {
                         if errors + warnings + info == 0 {
                             println!("{}: all OK!", filename.display());
