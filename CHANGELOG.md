@@ -6,6 +6,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 # Poexam ChangeLog
 
+## Version 0.0.4 (2026-02-08)
+
+### Fixed
+
+- Add special rule "spelling" in output of `poexam rules`
+
 ## Version 0.0.3 (2026-02-08)
 
 ### Changed

@@ -232,5 +232,6 @@ pub fn run_rules(_args: &args::RulesArgs) -> i32 {
     println!(
         "  checks: select rules that actually check (all rules except fuzzy, obsolete and untranslated)"
     );
+    println!("  spelling: select all spelling rules");
     0
 }
