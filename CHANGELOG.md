@@ -8,6 +8,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Version 0.0.3 (under dev)
 
+### Changed
+
+- Use multiple threads to search PO files in directories
+
 ### Added
 
 - Add rules "spelling-ctxt", "spelling-id" and "spelling-str"

@@ -2,8 +2,9 @@
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::{collections::HashSet, sync::Arc};
 
 use colored::Colorize;
 use ignore::WalkBuilder;
@@ -11,7 +12,7 @@ use ignore::WalkBuilder;
 /// Recursively find all gettext files (matching the `*.po` pattern) under the given paths.
 ///
 /// The .gitignore rules are respected: ignored files are skipped.
-pub fn find_po_files(paths: &[PathBuf]) -> Vec<PathBuf> {
+pub fn find_po_files(paths: &[PathBuf]) -> HashSet<PathBuf> {
     let all_paths: Vec<PathBuf> = if paths.is_empty() {
         vec![PathBuf::from(".")]
     } else {
@@ -27,26 +28,25 @@ pub fn find_po_files(paths: &[PathBuf]) -> Vec<PathBuf> {
 
     builder.follow_links(false);
 
-    let mut out = Vec::new();
-    let mut seen: HashSet<PathBuf> = HashSet::new();
-    for entry in builder.build() {
-        match entry {
-            Ok(dirent) => {
-                let path = dirent.path();
-                // Keep only regular files with extension `.po`.
-                if dirent.file_type().is_some_and(|ft| ft.is_file())
-                    && path.extension().is_some_and(|e| e == "po")
-                {
-                    let path2 = path.strip_prefix("./").unwrap_or(path).to_path_buf();
-                    if seen.insert(path2.clone()) {
-                        out.push(path2);
+    let files = Arc::new(Mutex::new(HashSet::new()));
+    builder.build_parallel().run(|| {
+        let files = Arc::clone(&files);
+        Box::new(move |entry| {
+            match entry {
+                Ok(dirent) => {
+                    if dirent.file_type().is_some_and(|ft| ft.is_file())
+                        && dirent.path().extension().is_some_and(|ext| ext == "po")
+                    {
+                        let mut files = files.lock().unwrap();
+                        files.insert(dirent.path().to_path_buf());
                     }
                 }
+                Err(err) => {
+                    eprintln!("{}: could not read entry: {err}", "Warning".yellow());
+                }
             }
-            Err(err) => {
-                eprintln!("{}: could not read entry: {err}", "Warning".yellow());
-            }
-        }
-    }
-    out
+            ignore::WalkState::Continue
+        })
+    });
+    files.lock().unwrap().clone()
 }
