@@ -8,6 +8,10 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ## Version 0.0.6 (under dev)
 
+### Added
+
+- Add option `--path-words` to specify a path to a directory containing files with list of words to add per language
+
 ### Fixed
 
 - Use severity "Warning" when a dictionary is not found for a language

@@ -209,7 +209,7 @@ mod tests {
         ]);
         let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         test_dir.push("resources/test");
-        let dict_id = get_dict(test_dir.as_path(), DEFAULT_LANG_ID).unwrap();
+        let dict_id = get_dict(test_dir.as_path(), None, DEFAULT_LANG_ID).unwrap();
         let mut checker = Checker::new(content.as_bytes(), &rules)
             .with_path_dicts(test_dir.as_path())
             .with_dict_id(Some(&dict_id));

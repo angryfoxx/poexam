@@ -34,6 +34,7 @@ pub struct Checker<'d, 'r, 't> {
     check_noqa: bool,
     check_obsolete: bool,
     path_dicts: PathBuf,
+    path_words: Option<PathBuf>,
     current_rule: &'static str,
     current_severity: Severity,
     current_line_ctxt: usize,
@@ -84,6 +85,12 @@ impl<'d, 'r, 't> Checker<'d, 'r, 't> {
     /// Set the path to the hunspell dictionaries.
     pub fn with_path_dicts(mut self, path_dicts: &Path) -> Self {
         self.path_dicts = PathBuf::from(path_dicts);
+        self
+    }
+
+    /// Set the path to a directory containing files with list of words to add per language.
+    pub fn with_path_words(mut self, path_words: Option<&PathBuf>) -> Self {
+        self.path_words = path_words.cloned();
         self
     }
 
@@ -220,8 +227,11 @@ impl<'d, 'r, 't> Checker<'d, 'r, 't> {
         while let Some(entry) = self.parser.next() {
             if entry.is_header() {
                 if self.rules.spelling_str_rule && self.dict_str.is_none() {
-                    self.dict_str = match get_dict(self.path_dicts.as_path(), &self.parser.language)
-                    {
+                    self.dict_str = match get_dict(
+                        self.path_dicts.as_path(),
+                        self.path_words.as_ref(),
+                        &self.parser.language,
+                    ) {
                         Ok(dict) => Some(dict),
                         Err(err) => {
                             if !error_dict_str {
@@ -293,7 +303,8 @@ pub fn check_file(
         .with_check_fuzzy(args.fuzzy)
         .with_check_noqa(args.noqa)
         .with_check_obsolete(args.obsolete)
-        .with_path_dicts(&args.path_dicts);
+        .with_path_dicts(&args.path_dicts)
+        .with_path_words(args.path_words.as_ref());
     checker.do_all_checks();
     (PathBuf::from(path.as_path()), checker.diagnostics)
 }
@@ -507,7 +518,11 @@ pub fn run_check(args: &args::CheckArgs) -> i32 {
     display_settings(args, &rules);
     let po_files = find_po_files(&args.files);
     let dict_id = if rules.spelling_ctxt_rule || rules.spelling_id_rule {
-        match get_dict(args.path_dicts.as_path(), &args.lang_id) {
+        match get_dict(
+            args.path_dicts.as_path(),
+            args.path_words.as_ref(),
+            &args.lang_id,
+        ) {
             Ok(dict) => Some(dict),
             Err(err) => {
                 eprintln!("{}: {err}", "Warning".yellow());
