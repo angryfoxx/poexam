@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     fs::File,
     io::Read,
     path::{Path, PathBuf},
@@ -411,6 +411,38 @@ fn display_diagnostics_human(result: &[CheckResult], args: &args::CheckArgs) {
     }
 }
 
+/// Display rule statistics.
+fn display_rule_stats(result: &[CheckResult]) {
+    let mut count_rule_errors = BTreeMap::<&str, usize>::new();
+    for rule in result.iter().flat_map(|x| &x.1).map(|r| r.rule) {
+        *count_rule_errors.entry(rule).or_insert(0) += 1;
+    }
+    let mut items: Vec<_> = count_rule_errors.iter().collect();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+    println!("Errors by rule:");
+    for (rule, count) in items {
+        println!("  {rule}: {count}");
+    }
+}
+
+/// Display file statistics.
+fn display_file_stats(file_errors: &[(PathBuf, usize, usize, usize)]) {
+    for (filename, info, warnings, errors) in file_errors {
+        if errors + warnings + info == 0 {
+            println!("{}: all OK!", filename.display());
+        } else {
+            println!(
+                "{}: {} problems ({} errors, {} warnings, {} info)",
+                filename.display(),
+                errors + warnings + info,
+                errors,
+                warnings,
+                info,
+            );
+        }
+    }
+}
+
 /// Display diagnostics in JSON format.
 fn display_diagnostics_json(result: &[CheckResult], _args: &args::CheckArgs) {
     let diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
@@ -460,7 +492,7 @@ fn display_result(result: &[CheckResult], args: &args::CheckArgs, elapsed: &Dura
                 }
             }
         }
-        if args.file_status {
+        if args.file_stats {
             file_errors.push((
                 filename.clone(),
                 count_file_info,
@@ -475,22 +507,12 @@ fn display_result(result: &[CheckResult], args: &args::CheckArgs, elapsed: &Dura
                 if !args.no_errors {
                     display_diagnostics_human(result, args);
                 }
-                if args.file_status {
+                if args.rule_stats {
+                    display_rule_stats(result);
+                }
+                if args.file_stats {
                     file_errors.sort();
-                    for (filename, info, warnings, errors) in file_errors {
-                        if errors + warnings + info == 0 {
-                            println!("{}: all OK!", filename.display());
-                        } else {
-                            println!(
-                                "{}: {} problems ({} errors, {} warnings, {} info)",
-                                filename.display(),
-                                errors + warnings + info,
-                                errors,
-                                warnings,
-                                info,
-                            );
-                        }
-                    }
+                    display_file_stats(&file_errors);
                 }
             }
             args::CheckOutputFormat::Json => {

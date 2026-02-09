@@ -92,9 +92,13 @@ pub struct CheckArgs {
     #[arg(long, value_enum, default_value_t)]
     pub sort: CheckSort,
 
-    /// Display status for each file checked (used only with `human` output format)
+    /// Display statistics about each rule which triggered at least one error
     #[arg(short, long)]
-    pub file_status: bool,
+    pub rule_stats: bool,
+
+    /// Display statistics for each file checked (used only with `human` output format)
+    #[arg(short, long)]
+    pub file_stats: bool,
 
     /// Output format
     #[arg(short, long, value_enum, default_value_t)]
