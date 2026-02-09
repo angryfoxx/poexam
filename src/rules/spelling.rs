@@ -165,6 +165,9 @@ impl RuleChecker for SpellingStrRule {
     }
 }
 
+/// Check words in a string: context (msgctxt), source (msgid) or translation (msgstr).
+///
+/// Return list of misspelled words (can be empty) and their positions in the string (start, end).
 fn check_words<'s>(
     entry: &Entry,
     s: &'s str,
