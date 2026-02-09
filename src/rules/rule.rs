@@ -17,7 +17,7 @@ use crate::{
 
 pub type Rule = Box<dyn RuleChecker + Sync>;
 
-const SPECIAL_RULES: [&str; 3] = ["all", "checks", "spelling"];
+const SPECIAL_RULES: [&str; 4] = ["all", "checks", "default", "spelling"];
 
 #[derive(Default)]
 #[allow(clippy::struct_excessive_bools)]
@@ -160,6 +160,8 @@ pub fn get_selected_rules(args: &args::CheckArgs) -> Result<Rules, Box<dyn std::
                 selected_rules.extend(all_rules.extract_if(.., |_| true));
             } else if name == "checks" {
                 selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_check()));
+            } else if name == "default" {
+                selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_default()));
             } else if name == "spelling" {
                 selected_rules
                     .extend(all_rules.extract_if(.., |rule| rule.name().starts_with("spelling-")));
@@ -214,11 +216,14 @@ pub fn run_rules(_args: &args::RulesArgs) -> i32 {
         }
     }
     println!("Total: {} rules", default_rules.len() + other_rules.len());
-    println!("Special rules:");
-    println!("  all: select all rules");
+    println!("Special rules to enable multiple rules at once:");
+    println!("  all: all available rules");
     println!(
-        "  checks: select rules that actually check (all rules except fuzzy, obsolete and untranslated)"
+        "  checks: all rules that actually check (all rules except fuzzy, obsolete and untranslated)"
     );
-    println!("  spelling: select all spelling rules");
+    println!(
+        "  default: default rules (can be used to add extra rules, e.g.: default,spelling,fuzzy)"
+    );
+    println!("  spelling: all spelling rules");
     0
 }

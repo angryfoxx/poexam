@@ -10,6 +10,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ### Added
 
+- Add special rule "default" to allow add of extra rules
 - Add output `misspelled` in `check` command to display only all misspelled words
 - Add option `--path-words` to specify a path to a directory containing files with list of words to add per language
 
