@@ -142,8 +142,8 @@ For rules `spelling-ctxt` and `spelling-msgid`, the default dictionary used is `
 
 The dictionaries are read from the hunspell directory (option `--path-dicts` to override it), in the following way:
 
-- Search the dictionary with the language name, e.g.: files `en_US.aff` and `en_US.dic`
-- Search the dictionary with the language code and no country, e.g.: files `en.aff` and `en.dic`.
+- Search the dictionary with the language name, e.g. files `en_US.aff` and `en_US.dic`
+- Search the dictionary with the language code and no country, e.g. files `en.aff` and `en.dic`.
 
 Personal words can be used, so that they are ignored by the spell checker (always considered good).\
 With the option `--path-words` you can specify a directory containing personal words files, one per language.
