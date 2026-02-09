@@ -32,13 +32,15 @@ It reports very few false positives and can be used in CI jobs and pre-commit ho
 
 With cargo:
 
-```bash
+```shell
 cargo install poexam
 ```
 
 ## Features
 
 Poexam can check entire directories and a lot of PO files in just a few milliseconds.
+
+### Rules
 
 It can perform a lot of checks via the default rules:
 
@@ -113,6 +115,51 @@ examples/fr.po:38: [info:double-quotes] missing double quotes (2 / 0)
 
 1 files checked: 24 problems in 1 files (5 errors, 1 warnings, 18 info) [23.890354ms]
 ```
+
+### Spell checking
+
+You can check all words in a file by using one of these rules:
+
+- `spelling-ctxt`: check all words in context strings (`msgctxt`) with English `en_US` dictionary.
+- `spelling-msgid`: check all words in source strings (`msgid`) with English `en_US` dictionary.
+- `spelling-msgstr`: check all words in translated strings (`msgstr`) with the language found in PO file header.
+
+The special rule `spelling` can be used to select these 3 rules at once.
+
+For rules `spelling-ctxt` and `spelling-msgid`, the default dictionary used is `en_US` and can be changed with the option `--lang-id`.
+
+The dictionaries are read from the hunspell directory (option `--path-dicts` to override it), in the following way:
+
+- Search the dictionary with the language name, e.g.: files `en_US.aff` and `en_US.dic`
+- Search the dictionary with the language code and no country, e.g.: files `en.aff` and `en.dic`.
+
+Personal words can be used, so that they are ignored by the spell checker (always considered good).\
+With the option `--path-words` you can specify a directory containing personal words files, one per language.
+
+For example this file `en_US.dic` can be used in such directory to ignore some words in English:
+
+```text
+charset
+hostname
+stdout
+uptime
+```
+
+The output `misspelled` displays all misspelled words and can be used to build such dictionary.
+
+For example, to build a dictionary for English (the English hunspell dictionary must be installed):
+
+```shell
+poexam check --select spelling-id --output misspelled fr.po > en_US.dic
+```
+
+And for the translated words in French (the French hunspell dictionary must be installed):
+
+```shell
+poexam check --select spelling-str --output misspelled fr.po > fr.dic
+```
+
+### Statistics
 
 Poexam can also give statistics about the translation progress and number of lines/words/charecters, see: `poexam help stats`.
 
