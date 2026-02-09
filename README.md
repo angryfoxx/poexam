@@ -36,6 +36,18 @@ With cargo:
 cargo install poexam
 ```
 
+## Pre-commit
+
+Add this to your `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/poexam/poexam
+    rev: <git-tag-or-commit-sha>  # Use a specific tag or commit SHA
+    hooks:
+      - id: poexam
+```
+
 ## Features
 
 Poexam can check entire directories and a lot of PO files in just a few milliseconds.

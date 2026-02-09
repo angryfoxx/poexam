@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Sébastien Helleu <flashcode@flashtux.org>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+- id: poexam
+  name: poexam
+  description: "Blazingly fast PO file linter"
+  entry: poexam
+  args: [check]
+  language: rust
+  types: [pofile]
