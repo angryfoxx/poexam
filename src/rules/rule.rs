@@ -222,7 +222,7 @@ pub fn run_rules(_args: &args::RulesArgs) -> i32 {
         "  checks: all rules that actually check (all rules except fuzzy, obsolete and untranslated)"
     );
     println!(
-        "  default: default rules (can be used to add extra rules, e.g.: default,spelling,fuzzy)"
+        "  default: default rules (can be used to add extra rules, e.g. \"default,spelling,fuzzy\")"
     );
     println!("  spelling: all spelling rules");
     0
