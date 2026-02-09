@@ -43,7 +43,7 @@ Add this to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/poexam/poexam
-    rev: <git-tag-or-commit-sha>  # Use a specific tag or commit SHA
+    rev: <git-tag-or-commit-sha>  # Use a specific tag vX.Y.Z or commit SHA
     hooks:
       - id: poexam
 ```
