@@ -133,12 +133,12 @@ examples/fr.po:38: [info:double-quotes] missing double quotes (2 / 0)
 You can check all words in a file by using one of these rules:
 
 - `spelling-ctxt`: check all words in context strings (`msgctxt`) with English `en_US` dictionary.
-- `spelling-msgid`: check all words in source strings (`msgid`) with English `en_US` dictionary.
-- `spelling-msgstr`: check all words in translated strings (`msgstr`) with the language found in PO file header.
+- `spelling-id`: check all words in source strings (`msgid`) with English `en_US` dictionary.
+- `spelling-str`: check all words in translated strings (`msgstr`) with the language found in PO file header.
 
 The special rule `spelling` can be used to select these 3 rules at once.
 
-For rules `spelling-ctxt` and `spelling-msgid`, the default dictionary used is `en_US` and can be changed with the option `--lang-id`.
+For rules `spelling-ctxt` and `spelling-id`, the default dictionary used is `en_US` and can be changed with the option `--lang-id`.
 
 The dictionaries are read from the hunspell directory (option `--path-dicts` to override it), in the following way:
 
