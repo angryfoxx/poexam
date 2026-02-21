@@ -580,3 +580,293 @@ pub fn run_stats(args: &args::StatsArgs) -> i32 {
     }
     display_stats(&stats, args)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_entries(
+        total: u64,
+        translated: u64,
+        fuzzy: u64,
+        untranslated: u64,
+        obsolete: u64,
+    ) -> Entries {
+        Entries {
+            total,
+            translated,
+            fuzzy,
+            untranslated,
+            obsolete,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn make_counts(
+        id_total: u64,
+        id_translated: u64,
+        id_fuzzy: u64,
+        id_untranslated: u64,
+        id_obsolete: u64,
+        str_translated: u64,
+        str_fuzzy: u64,
+        str_untranslated: u64,
+        str_obsolete: u64,
+    ) -> Counts {
+        Counts {
+            id_total,
+            id_translated,
+            id_fuzzy,
+            id_untranslated,
+            id_obsolete,
+            str_translated,
+            str_fuzzy,
+            str_untranslated,
+            str_obsolete,
+        }
+    }
+
+    #[test]
+    fn test_entries_pct_ratio() {
+        let e = Entries::default();
+        assert_eq!(e.pct_translated(), 0);
+        assert_eq!(e.ratio_translated(), 0);
+        assert_eq!(e.pct_fuzzy(), 0);
+        assert_eq!(e.ratio_fuzzy(), 0);
+        assert_eq!(e.pct_untranslated(), 0);
+        assert_eq!(e.ratio_untranslated(), 0);
+        assert_eq!(e.pct_obsolete(), 0);
+        assert_eq!(e.ratio_obsolete(), 0);
+        assert_eq!(e.pct(), (0, 0, 0, 0));
+
+        let e = make_entries(0, 0, 0, 0, 0);
+        assert_eq!(e.pct_translated(), 0);
+        assert_eq!(e.ratio_translated(), 0);
+        assert_eq!(e.pct_fuzzy(), 0);
+        assert_eq!(e.ratio_fuzzy(), 0);
+        assert_eq!(e.pct_untranslated(), 0);
+        assert_eq!(e.ratio_untranslated(), 0);
+        assert_eq!(e.pct_obsolete(), 0);
+        assert_eq!(e.ratio_obsolete(), 0);
+        assert_eq!(e.pct(), (0, 0, 0, 0));
+
+        let e = make_entries(3, 1, 1, 1, 0);
+        assert_eq!(e.pct_translated(), 33);
+        assert_eq!(e.ratio_translated(), 333_333);
+        assert_eq!(e.pct_fuzzy(), 33);
+        assert_eq!(e.ratio_fuzzy(), 333_333);
+        assert_eq!(e.pct_untranslated(), 33);
+        assert_eq!(e.ratio_untranslated(), 333_333);
+
+        let e = make_entries(200, 150, 30, 10, 10);
+        assert_eq!(e.pct_translated(), 75);
+        assert_eq!(e.ratio_translated(), 750_000);
+        assert_eq!(e.pct_fuzzy(), 15);
+        assert_eq!(e.ratio_fuzzy(), 150_000);
+        assert_eq!(e.pct_untranslated(), 5);
+        assert_eq!(e.ratio_untranslated(), 50_000);
+        assert_eq!(e.pct_obsolete(), 5);
+        assert_eq!(e.ratio_obsolete(), 50_000);
+        assert_eq!(e.pct(), (75, 15, 5, 5));
+
+        let e = make_entries(100, 100, 0, 0, 0);
+        assert_eq!(e.pct_translated(), 100);
+        assert_eq!(e.ratio_translated(), 1_000_000);
+        assert_eq!(e.pct_fuzzy(), 0);
+        assert_eq!(e.ratio_fuzzy(), 0);
+        assert_eq!(e.pct_untranslated(), 0);
+        assert_eq!(e.ratio_untranslated(), 0);
+        assert_eq!(e.pct_obsolete(), 0);
+        assert_eq!(e.ratio_obsolete(), 0);
+        assert_eq!(e.pct(), (100, 0, 0, 0));
+    }
+
+    #[test]
+    fn test_entries_add_assign() {
+        let mut a = make_entries(10, 4, 3, 2, 1);
+        let b = Entries::default();
+        a += b;
+        assert_eq!(a.total, 10);
+        assert_eq!(a.translated, 4);
+        assert_eq!(a.fuzzy, 3);
+        assert_eq!(a.untranslated, 2);
+        assert_eq!(a.obsolete, 1);
+        let b = make_entries(20, 15, 3, 1, 1);
+        a += b;
+        assert_eq!(a.total, 30);
+        assert_eq!(a.translated, 19);
+        assert_eq!(a.fuzzy, 6);
+        assert_eq!(a.untranslated, 3);
+        assert_eq!(a.obsolete, 2);
+    }
+
+    #[test]
+    fn test_entries_display() {
+        let e = make_entries(100, 80, 10, 6, 4);
+        let s = format!("{e}");
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn test_counts_pct_id_translated() {
+        let c = Counts::default();
+        assert_eq!(c.pct_id_translated(), 0);
+        assert_eq!(c.pct_id_fuzzy(), 0);
+        assert_eq!(c.pct_id_untranslated(), 0);
+        assert_eq!(c.pct_id_obsolete(), 0);
+
+        let c = make_counts(100, 60, 20, 10, 10, 50, 15, 0, 8);
+        assert_eq!(c.pct_id_translated(), 60);
+        assert_eq!(c.pct_id_fuzzy(), 20);
+        assert_eq!(c.pct_id_untranslated(), 10);
+        assert_eq!(c.pct_id_obsolete(), 10);
+    }
+
+    #[test]
+    fn test_counts_add_assign() {
+        let mut a = make_counts(50, 30, 10, 6, 4, 25, 8, 1, 3);
+        let b = Counts::default();
+        a += b;
+        assert_eq!(a.id_total, 50);
+        assert_eq!(a.id_translated, 30);
+        assert_eq!(a.id_fuzzy, 10);
+        assert_eq!(a.id_untranslated, 6);
+        assert_eq!(a.id_obsolete, 4);
+        assert_eq!(a.str_translated, 25);
+        assert_eq!(a.str_fuzzy, 8);
+        assert_eq!(a.str_untranslated, 1);
+        assert_eq!(a.str_obsolete, 3);
+        let b = make_counts(100, 60, 20, 10, 10, 50, 15, 0, 8);
+        a += b;
+        assert_eq!(a.id_total, 150);
+        assert_eq!(a.id_translated, 90);
+        assert_eq!(a.id_fuzzy, 30);
+        assert_eq!(a.id_untranslated, 16);
+        assert_eq!(a.id_obsolete, 14);
+        assert_eq!(a.str_translated, 75);
+        assert_eq!(a.str_fuzzy, 23);
+        assert_eq!(a.str_untranslated, 1);
+        assert_eq!(a.str_obsolete, 11);
+    }
+
+    #[test]
+    fn test_stats_file_default() {
+        let sf = StatsFile::default();
+        assert_eq!(sf.path, PathBuf::new());
+        assert_eq!(sf.entries.total, 0);
+        assert!(sf.words.is_none());
+        assert!(sf.chars.is_none());
+    }
+
+    #[test]
+    fn test_stats_file_new() {
+        let sf = StatsFile::new(Path::new("/tmp/fr.po"));
+        assert_eq!(sf.path, PathBuf::from("/tmp/fr.po"));
+        assert_eq!(sf.entries.total, 0);
+        assert!(sf.words.is_none());
+        assert!(sf.chars.is_none());
+    }
+
+    #[test]
+    fn test_stats_file_display() {
+        let mut sf = StatsFile::new(Path::new("fr.po"));
+        sf.entries = make_entries(50, 40, 5, 3, 2);
+        let s = format!("{sf}");
+        assert!(s.contains("fr.po"));
+    }
+
+    #[test]
+    fn test_stats_file_to_string_words_none() {
+        let sf = StatsFile::new(Path::new("fr.po"));
+        let s = sf.to_string_words();
+        assert!(s.contains("Entries"));
+        assert!(s.contains("Words"));
+        assert!(s.contains("Chars"));
+    }
+
+    #[test]
+    fn test_stats_file_to_string_words_some() {
+        let mut sf = StatsFile::new(Path::new("fr.po"));
+        sf.entries = make_entries(100, 80, 10, 5, 5);
+        sf.words = Some(make_counts(500, 400, 50, 30, 20, 380, 45, 0, 18));
+        sf.chars = Some(make_counts(3000, 2400, 300, 180, 120, 2300, 280, 0, 110));
+        let s = sf.to_string_words();
+        assert!(s.contains("Entries"));
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn test_count_words() {
+        assert_eq!(count_words("", &Language::Null), 0);
+        assert_eq!(count_words("hello", &Language::Null), 1);
+        assert_eq!(count_words("hello, %s world!", &Language::Null), 3);
+        assert_eq!(count_words("hello, %s world!", &Language::C), 2);
+    }
+
+    #[test]
+    fn test_count_chars() {
+        assert_eq!(count_chars("", &Language::Null), 0);
+        assert_eq!(count_chars("hello", &Language::Null), 5);
+        assert_eq!(count_chars("hello %s", &Language::Null), 6);
+        assert_eq!(count_chars("hello %s", &Language::C), 5);
+        assert_eq!(count_chars("a b c", &Language::Null), 3);
+    }
+
+    #[test]
+    fn test_compute_total_stats_empty() {
+        let stats: Vec<StatsFile> = vec![];
+        let total = compute_total_stats(&stats);
+        assert_eq!(total.entries.total, 0);
+        assert!(total.words.is_none());
+        assert!(total.chars.is_none());
+        assert!(total.path.display().to_string().contains("Total (0)"));
+    }
+
+    #[test]
+    fn test_compute_total_stats_one_file() {
+        let mut sf = StatsFile::new(Path::new("fr.po"));
+        sf.entries = make_entries(10, 8, 1, 1, 0);
+        let total = compute_total_stats(&vec![sf]);
+        assert_eq!(total.entries.total, 10);
+        assert_eq!(total.entries.translated, 8);
+        assert_eq!(total.entries.fuzzy, 1);
+        assert_eq!(total.entries.untranslated, 1);
+        assert_eq!(total.entries.obsolete, 0);
+        assert!(total.words.is_none());
+        assert!(total.chars.is_none());
+        assert!(total.path.display().to_string().contains("Total (1)"));
+    }
+
+    #[test]
+    fn test_compute_total_stats_multiple_with_words() {
+        let mut sf1 = StatsFile::new(Path::new("de.po"));
+        sf1.entries = make_entries(10, 8, 1, 1, 0);
+        sf1.words = Some(make_counts(50, 40, 5, 5, 0, 38, 4, 0, 0));
+        sf1.chars = Some(make_counts(300, 240, 30, 30, 0, 230, 28, 0, 0));
+
+        let mut sf2 = StatsFile::new(Path::new("fr.po"));
+        sf2.entries = make_entries(20, 15, 3, 1, 1);
+        sf2.words = Some(make_counts(100, 75, 15, 5, 5, 70, 12, 0, 4));
+        sf2.chars = Some(make_counts(600, 450, 90, 30, 30, 420, 85, 0, 25));
+
+        let total = compute_total_stats(&vec![sf1, sf2]);
+        assert_eq!(total.entries.total, 30);
+        assert_eq!(total.entries.translated, 23);
+        assert_eq!(total.entries.fuzzy, 4);
+        assert_eq!(total.entries.untranslated, 2);
+        assert_eq!(total.entries.obsolete, 1);
+
+        let words = total.words.unwrap();
+        assert_eq!(words.id_total, 150);
+        assert_eq!(words.id_translated, 115);
+        assert_eq!(words.id_fuzzy, 20);
+        assert_eq!(words.str_translated, 108);
+
+        let chars = total.chars.unwrap();
+        assert_eq!(chars.id_total, 900);
+        assert_eq!(chars.id_translated, 690);
+        assert_eq!(chars.str_translated, 650);
+
+        assert!(total.path.display().to_string().contains("Total (2)"));
+    }
+}
