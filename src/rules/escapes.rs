@@ -132,9 +132,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_escapes(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(EscapesRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -184,6 +184,18 @@ msgstr "testé\\\\"
             diag.message,
             "extra escaped escape characters '\\\\' (0 / 1)"
         );
+    }
+
+    #[test]
+    fn test_escaped_char_error_noqa() {
+        let diags = check_escapes(
+            r#"
+#, noqa:escapes
+msgid "tested\\"
+msgstr "testé"
+"#,
+        );
+        assert!(diags.is_empty());
     }
 
     #[test]

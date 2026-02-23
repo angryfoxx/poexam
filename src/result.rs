@@ -6,19 +6,37 @@
 
 use std::{
     collections::{BTreeMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::Duration,
 };
 
-use crate::{
-    args,
-    checker::CheckResult,
-    diagnostic::{Diagnostic, Severity},
-};
+use crate::diagnostic::{Diagnostic, Severity};
+use crate::{args, rules::rule::Rules};
+use crate::{checker::CheckFileResult, config::Config};
+
+/// Display the settings used to check a file.
+pub fn display_settings(path: &Path, config: &Config, rules: &Rules) {
+    println!("Settings for file: {}", path.display());
+    println!("  {config:?}");
+    let rules_names = rules
+        .enabled
+        .iter()
+        .map(|r| r.name())
+        .collect::<Vec<&str>>()
+        .join(", ");
+    println!(
+        "  Rules enabled: {}",
+        if rules_names.is_empty() {
+            "<none>"
+        } else {
+            &rules_names
+        }
+    );
+}
 
 /// Display diagnostics in human format.
-fn display_diagnostics_human(result: &[CheckResult], args: &args::CheckArgs) {
-    let mut diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
+fn display_diagnostics_human(result: &[CheckFileResult], args: &args::CheckArgs) {
+    let mut diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.diagnostics).collect();
     match args.sort {
         args::CheckSort::Line => {
             diags.sort_by_key(|diag| {
@@ -62,9 +80,9 @@ fn display_diagnostics_human(result: &[CheckResult], args: &args::CheckArgs) {
 }
 
 /// Display rule statistics.
-fn display_rule_stats(result: &[CheckResult]) {
+fn display_rule_stats(result: &[CheckFileResult]) {
     let mut count_rule_errors = BTreeMap::<&str, usize>::new();
-    for rule in result.iter().flat_map(|x| &x.1).map(|r| r.rule) {
+    for rule in result.iter().flat_map(|x| &x.diagnostics).map(|r| r.rule) {
         *count_rule_errors.entry(rule).or_insert(0) += 1;
     }
     let mut items: Vec<_> = count_rule_errors.iter().collect();
@@ -94,15 +112,17 @@ fn display_file_stats(file_errors: &[(PathBuf, usize, usize, usize)]) {
 }
 
 /// Display diagnostics in JSON format.
-fn display_diagnostics_json(result: &[CheckResult], _args: &args::CheckArgs) {
-    let diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.1).collect();
+fn display_diagnostics_json(result: &[CheckFileResult], _args: &args::CheckArgs) {
+    let diags: Vec<&Diagnostic> = result.iter().flat_map(|x| &x.diagnostics).collect();
     println!("{}", serde_json::to_string(&diags).unwrap_or_default());
 }
 
 /// Display misspelled words.
-fn display_misspelled_words(result: &[CheckResult], _args: &args::CheckArgs) {
-    let hash_misspelled_words: HashSet<_> =
-        result.iter().flat_map(|x| &x.2).collect::<HashSet<_>>();
+fn display_misspelled_words(result: &[CheckFileResult], _args: &args::CheckArgs) {
+    let hash_misspelled_words: HashSet<_> = result
+        .iter()
+        .flat_map(|x| &x.misspelled_words)
+        .collect::<HashSet<_>>();
     let mut misspelled_words = hash_misspelled_words.iter().copied().collect::<Vec<_>>();
     misspelled_words.sort_unstable();
     for word in misspelled_words {
@@ -111,22 +131,29 @@ fn display_misspelled_words(result: &[CheckResult], _args: &args::CheckArgs) {
 }
 
 /// Display the result of the checks and return the appropriate exit code.
-pub fn display_result(result: &[CheckResult], args: &args::CheckArgs, elapsed: &Duration) -> i32 {
+pub fn display_result(
+    result: &[CheckFileResult],
+    args: &args::CheckArgs,
+    elapsed: &Duration,
+) -> i32 {
     let mut files_checked = 0;
     let mut files_with_errors = 0;
     let mut count_info = 0;
     let mut count_warnings = 0;
     let mut count_errors = 0;
     let mut file_errors: Vec<(PathBuf, usize, usize, usize)> = Vec::new();
-    for (filename, errors, _) in result {
+    for file in result {
+        if args.show_settings && !args.quiet {
+            display_settings(file.path.as_path(), &file.config, &file.rules);
+        }
         let mut count_file_info = 0;
         let mut count_file_warnings = 0;
         let mut count_file_errors = 0;
         files_checked += 1;
-        if !errors.is_empty() {
+        if !file.diagnostics.is_empty() {
             files_with_errors += 1;
-            for error in errors {
-                match error.severity {
+            for diag in &file.diagnostics {
+                match diag.severity {
                     Severity::Info => {
                         count_info += 1;
                         count_file_info += 1;
@@ -144,7 +171,7 @@ pub fn display_result(result: &[CheckResult], args: &args::CheckArgs, elapsed: &
         }
         if args.file_stats {
             file_errors.push((
-                filename.clone(),
+                file.path.clone(),
                 count_file_info,
                 count_file_warnings,
                 count_file_errors,

@@ -86,9 +86,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_tabs(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(TabsRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -112,6 +112,26 @@ msgstr "\ttesté\tligne 2\t"
 "#,
         );
         assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_tabs_error_noqa() {
+        let diags = check_tabs(
+            r#"
+msgid "tested\tline 2"
+msgstr "testé ligne 2"
+
+msgid "tested line 2"
+msgstr "testé\tligne 2"
+"#,
+        );
+        assert_eq!(diags.len(), 2);
+        let diag = &diags[0];
+        assert_eq!(diag.severity, Severity::Error);
+        assert_eq!(diag.message, "missing tabs '\\t' (1 / 0)");
+        let diag = &diags[1];
+        assert_eq!(diag.severity, Severity::Error);
+        assert_eq!(diag.message, "extra tabs '\\t' (0 / 1)");
     }
 
     #[test]

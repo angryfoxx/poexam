@@ -82,14 +82,14 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_plurals(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(PluralsRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
     #[test]
-    fn test_no_plural() {
+    fn test_no_plurals() {
         let diags = check_plurals(
             r#"
 msgid "tested"
@@ -100,7 +100,7 @@ msgstr "testé"
     }
 
     #[test]
-    fn test_plural_ok() {
+    fn test_plurals_ok() {
         let diags = check_plurals(
             r#"
 msgid "%d file"
@@ -127,7 +127,25 @@ msgstr[1] "%d fichiers"
     }
 
     #[test]
-    fn test_plural_error() {
+    fn test_plurals_error_noqa() {
+        let diags = check_plurals(
+            r#"
+msgid ""
+msgstr ""
+"Project-Id-Version: my_project\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#, noqa:plurals
+msgid "%d file"
+msgid_plural "%d files"
+msgstr[0] "%d fichier"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_plurals_error() {
         let diags = check_plurals(
             r#"
 msgid ""

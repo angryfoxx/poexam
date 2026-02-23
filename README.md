@@ -52,6 +52,38 @@ repos:
 
 Poexam can check entire directories and a lot of PO files in just a few milliseconds.
 
+### Configuration file
+
+Poexam can use a different configuration file for each directory scanned, using the TOML format.
+
+The configuration file used is the closest file found by order, where `<path>` is the path of each PO file, and all ancestors of this directory are used as well:
+
+- `<path>/.poexam/poexam.toml`
+- `<path>/poexam.toml`
+- `<path>/.poexam.toml`
+
+The following options are available in the `check` section:
+
+| Option     | Overridden by… | Type             | Description                                                              |
+|------------|----------------|------------------|--------------------------------------------------------------------------|
+| fuzzy      | `--fuzzy`      | Boolean          | Check fuzzy entries.                                                     |
+| noqa       | `--noqa`       | Boolean          | Check entries marked as "noqa".                                          |
+| obsolete   | `--obsolete`   | Boolean          | Check obsolete entries.                                                  |
+| select     | `--select`     | Array of strings | Selected rules.                                                          |
+| ignore     | `--ignore`     | Array of strings | Ignored rules.                                                           |
+| path_dicts | `--path-dicts` | String (path)    | Path to the Hunspell dictionaries.                                       |
+| path_words | `--path-words` | String (path)    | Path with custom words (can be absolute or relative to the config file). |
+| land_id    | `--lang-id`    | String           | Language used to check source strings.                                   |
+| severity   | `--severity`   | Array of strings | Perform only checks with these severities (`info`, `warning`, `error`).  |
+
+Example of file:
+
+```toml
+[check]
+select = ["default", "spelling"]
+path_words = "./dicts"
+```
+
 ### Rules
 
 It can perform a lot of checks via the default rules:

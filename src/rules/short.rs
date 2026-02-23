@@ -85,9 +85,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_short(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(ShortRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -97,6 +97,18 @@ mod tests {
             r#"
 msgid "tested"
 msgstr "testé"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_short_error_noqa() {
+        let diags = check_short(
+            r#"
+#, noqa:short
+msgid " ... :"
+msgstr " :"
 "#,
         );
         assert!(diags.is_empty());

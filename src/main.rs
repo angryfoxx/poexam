@@ -32,6 +32,7 @@
 
 mod args;
 mod checker;
+mod config;
 mod diagnostic;
 mod dict;
 mod dir;

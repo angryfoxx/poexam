@@ -136,16 +136,16 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_whitespace_start(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(WhitespaceStartRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
     fn check_whitespace_end(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(WhitespaceEndRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -200,6 +200,26 @@ msgstr "  testé  "
             r#"
 msgid "  tested  "
 msgstr "  testé  "
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_whitespace_error_noqa() {
+        let diags = check_whitespace_start(
+            r#"
+#, noqa:whitespace-start
+msgid " tested "
+msgstr "testé  "
+"#,
+        );
+        assert!(diags.is_empty());
+        let diags = check_whitespace_end(
+            r#"
+#, noqa:whitespace-end
+msgid " tested "
+msgstr "testé  "
 "#,
         );
         assert!(diags.is_empty());

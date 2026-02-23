@@ -114,9 +114,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_formats(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(FormatsRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -159,6 +159,18 @@ msgstr "age: %d, nom: %(name)s"
 #, python-brace-format
 msgid "name: {0}, age: %d"
 msgstr "age: %d, nom: {0}"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_c_format_error_noqa() {
+        let diags = check_formats(
+            r#"
+#, c-format, noqa:formats
+msgid "name: %s, age: %d"
+msgstr "nom : %s, âge : %f"
 "#,
         );
         assert!(diags.is_empty());

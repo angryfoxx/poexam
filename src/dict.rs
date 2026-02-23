@@ -11,6 +11,9 @@ use std::{
 
 use spellbook::Dictionary;
 
+pub const DEFAULT_PATH_DICTS: &str = "/usr/share/hunspell";
+pub const DEFAULT_LANG_ID: &str = "en_US";
+
 /// Get the dictionary with its name.
 fn get_dict_name(path: &Path, name: &str) -> Option<Dictionary> {
     if let Ok(aff) = std::fs::read_to_string(format!("{}/{name}.aff", path.to_string_lossy()))

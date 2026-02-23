@@ -25,6 +25,11 @@ msgstr ""
 msgid "Test: blank translation"
 msgstr " "
 
+# rule: blank
+#, noqa
+msgid "Test: blank translation with noqa"
+msgstr " "
+
 # rule: brackets
 msgid "Test [brackets]"
 msgstr "Test crochets"

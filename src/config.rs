@@ -1,0 +1,191 @@
+// SPDX-FileCopyrightText: 2026 Sébastien Helleu <flashcode@flashtux.org>
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+//! Configuration options.
+
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::fs::read_to_string;
+use std::path::{Path, PathBuf};
+
+use crate::args;
+use crate::diagnostic::Severity;
+use crate::dict;
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct Config {
+    #[serde(skip)]
+    pub path: Option<PathBuf>,
+
+    #[serde(default)]
+    pub check: CheckConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct CheckConfig {
+    #[serde(default = "default_fuzzy")]
+    pub fuzzy: bool,
+
+    #[serde(default = "default_noqa")]
+    pub noqa: bool,
+
+    #[serde(default = "default_obsolete")]
+    pub obsolete: bool,
+
+    #[serde(default = "default_select")]
+    pub select: Vec<String>,
+
+    #[serde(default = "default_ignore")]
+    pub ignore: Vec<String>,
+
+    #[serde(default = "default_path_dicts")]
+    pub path_dicts: PathBuf,
+
+    #[serde(default = "default_path_words")]
+    pub path_words: Option<PathBuf>,
+
+    #[serde(default = "default_lang_id")]
+    pub lang_id: String,
+
+    #[serde(default = "default_severity")]
+    pub severity: Vec<Severity>,
+}
+
+fn default_fuzzy() -> bool {
+    false
+}
+
+fn default_noqa() -> bool {
+    false
+}
+
+fn default_obsolete() -> bool {
+    false
+}
+
+fn default_select() -> Vec<String> {
+    vec![String::from("default")]
+}
+
+fn default_ignore() -> Vec<String> {
+    vec![]
+}
+
+fn default_path_dicts() -> PathBuf {
+    PathBuf::from(dict::DEFAULT_PATH_DICTS)
+}
+
+fn default_path_words() -> Option<PathBuf> {
+    None
+}
+
+fn default_lang_id() -> String {
+    String::from(dict::DEFAULT_LANG_ID)
+}
+
+fn default_severity() -> Vec<Severity> {
+    vec![]
+}
+
+impl Default for CheckConfig {
+    fn default() -> Self {
+        Self {
+            fuzzy: default_fuzzy(),
+            noqa: default_noqa(),
+            obsolete: default_obsolete(),
+            select: default_select(),
+            ignore: default_ignore(),
+            path_dicts: default_path_dicts(),
+            path_words: default_path_words(),
+            lang_id: default_lang_id(),
+            severity: default_severity(),
+        }
+    }
+}
+
+impl Config {
+    pub fn new(path: Option<&PathBuf>) -> Result<Config, Box<dyn Error>> {
+        let content = match path {
+            Some(cfg_path) => match read_to_string(cfg_path) {
+                Ok(content) => content,
+                Err(err) => return Err(format!("could not read config: {err}").into()),
+            },
+            None => String::new(),
+        };
+        let mut config: Config = toml::from_str(&content)?;
+        if let Some(path) = path {
+            config.path = Some(PathBuf::from(path));
+        }
+        Ok(config)
+    }
+
+    pub fn with_args_check(mut self, args: &args::CheckArgs) -> Self {
+        if args.fuzzy {
+            self.check.fuzzy = true;
+        }
+        if args.noqa {
+            self.check.noqa = true;
+        }
+        if args.obsolete {
+            self.check.obsolete = true;
+        }
+        if let Some(select) = &args.select {
+            self.check.select = select.split(',').map(|s| s.trim().to_string()).collect();
+        }
+        if let Some(ignore) = &args.ignore {
+            self.check.ignore = ignore.split(',').map(|s| s.trim().to_string()).collect();
+        }
+        if let Some(path_dicts) = &args.path_dicts {
+            self.check.path_dicts = PathBuf::from(path_dicts);
+        }
+        if let Some(path_words) = &args.path_words {
+            self.check.path_words = Some(PathBuf::from(path_words));
+        } else if let Some(path_words) = &self.check.path_words
+            && path_words.is_relative()
+            && let Some(config_path) = &self.path
+            && let Some(config_dir) = config_path.parent()
+        {
+            let path = PathBuf::from(config_dir).join(path_words);
+            self.check.path_words = match path.canonicalize() {
+                Ok(abs_path) => Some(abs_path),
+                Err(_) => Some(path),
+            };
+        }
+        if let Some(lang_id) = &args.lang_id {
+            self.check.lang_id = String::from(lang_id);
+        }
+        if !args.severity.is_empty() {
+            self.check.severity.clone_from(&args.severity);
+        }
+        self
+    }
+}
+
+/// Find the configuration file for a PO file.
+///
+/// Look for paths in this order (<path> being the path to the PO file):
+/// - <path>/.poexam/poexam.toml
+/// - <path>/poexam.toml
+/// - <path>/.poexam.toml
+pub fn find_config_path(po_path: &Path) -> Option<PathBuf> {
+    let Ok(abs_path) = po_path.canonicalize() else {
+        return None;
+    };
+    for path in abs_path.ancestors() {
+        let p = path.join(".poexam/poexam.toml");
+        if p.exists() {
+            return Some(p);
+        }
+        let p = path.join("poexam.toml");
+        if p.exists() {
+            return Some(p);
+        }
+        let p = path.join(".poexam.toml");
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}

@@ -65,9 +65,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_encoding(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(EncodingRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -83,10 +83,20 @@ msgstr "testé"
     }
 
     #[test]
-    fn test_encoding_error() {
+    fn test_encoding_error_noqa() {
+        let mut checker =
+            Checker::new(b"#, noqa:encoding\nmsgid \"tested\"\nmsgstr \"test\xe9\"\n");
         let rules = Rules::new(vec![Box::new(EncodingRule {})]);
-        let mut checker = Checker::new(b"msgid \"tested\"\nmsgstr \"test\xe9\"\n", &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
+        let diags = checker.diagnostics;
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_encoding_error() {
+        let mut checker = Checker::new(b"msgid \"tested\"\nmsgstr \"test\xe9\"\n");
+        let rules = Rules::new(vec![Box::new(EncodingRule {})]);
+        checker.do_all_checks(&rules);
         let diags = checker.diagnostics;
         assert_eq!(diags.len(), 1);
         let diag = &diags[0];

@@ -219,23 +219,20 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-    use crate::{
-        args::DEFAULT_LANG_ID, diagnostic::Diagnostic, dict::get_dict, rules::rule::Rules,
-    };
+    use crate::{config::Config, diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_spelling(content: &str) -> Vec<Diagnostic> {
+        let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        test_dir.push("resources/test");
+        let mut config = Config::default();
+        config.check.path_dicts = test_dir;
+        let mut checker = Checker::new(content.as_bytes()).with_config(config);
         let rules = Rules::new(vec![
             Box::new(SpellingCtxtRule {}),
             Box::new(SpellingIdRule {}),
             Box::new(SpellingStrRule {}),
         ]);
-        let mut test_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        test_dir.push("resources/test");
-        let dict_id = get_dict(test_dir.as_path(), None, DEFAULT_LANG_ID).unwrap();
-        let mut checker = Checker::new(content.as_bytes(), &rules)
-            .with_path_dicts(test_dir.as_path())
-            .with_dict_id(Some(&dict_id));
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -249,6 +246,22 @@ msgstr "Language: fr\n"
 msgctxt "some context"
 msgid "tested"
 msgstr "testé"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_spelling_error_noqa() {
+        let diags = check_spelling(
+            r#"
+msgid ""
+msgstr "Language: fr\n"
+
+#, noqa:spelling-ctxt;spelling-id;spelling-str
+msgctxt "some contxet, some contxet"
+msgid "this is a tyypo, this is a tyypo"
+msgstr "ceci est unz fôte, ceci est unz fôte"
 "#,
         );
         assert!(diags.is_empty());

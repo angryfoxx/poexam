@@ -204,9 +204,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_brackets(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(BracketsRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -234,6 +234,18 @@ msgstr "[({<testé>})]"
             r#"
 msgid "[({<tested>})]"
 msgstr "[({<testé>})]"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_brackets_error_noqa() {
+        let diags = check_brackets(
+            r#"
+#, noqa:brackets
+msgid "[(tested"
+msgstr "testé>}"
 "#,
         );
         assert!(diags.is_empty());

@@ -90,9 +90,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_double_spaces(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(DoubleSpacesRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -117,6 +117,18 @@ msgstr "ceci  est  un  test"
         );
         // Note: leading and trailing and double spaces are ignored here
         // (such errors are reported in the "whitespace" checks).
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_double_spaces_error_noqa() {
+        let diags = check_double_spaces(
+            r#"
+#, noqa:double-spaces
+msgid "this is a  test"
+msgstr "ceci est un test"
+"#,
+        );
         assert!(diags.is_empty());
     }
 

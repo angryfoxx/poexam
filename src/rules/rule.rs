@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use crate::{
     args,
     checker::Checker,
+    config::Config,
     po::entry::Entry,
     rules::{
         blank, brackets, changed, double_quotes, double_spaces, encoding, escapes, formats, fuzzy,
@@ -17,7 +18,7 @@ use crate::{
     },
 };
 
-pub type Rule = Box<dyn RuleChecker + Sync>;
+pub type Rule = Box<dyn RuleChecker + Send + Sync>;
 
 const SPECIAL_RULES: [&str; 4] = ["all", "checks", "default", "spelling"];
 
@@ -118,10 +119,13 @@ pub fn get_all_rules() -> Vec<Rule> {
 
 /// Get unknown rule names from a list of names compared to all available rules.
 pub fn get_unknown_rules<'a>(
-    names: &'a [&str],
+    names: &'a [String],
     all_rules_names: &HashSet<&'static str>,
 ) -> Vec<&'a str> {
-    let selected_rules_names = names.iter().copied().collect::<HashSet<_>>();
+    let selected_rules_names = names
+        .iter()
+        .map(std::convert::AsRef::as_ref)
+        .collect::<HashSet<_>>();
     let mut unknown_rules_names: HashSet<&str> = selected_rules_names
         .difference(all_rules_names)
         .copied()
@@ -143,55 +147,44 @@ pub fn get_unknown_rules<'a>(
 /// If `--select` is provided, only the specified rules are included.
 /// If `--select` is not provided, all default rules are included.
 /// Then, any rules specified in `--ignore` are removed from the selection.
-pub fn get_selected_rules(args: &args::CheckArgs) -> Result<Rules, Box<dyn std::error::Error>> {
-    let all_severities = args.severity.is_empty();
+pub fn get_selected_rules(config: &Config) -> Result<Rules, Box<dyn std::error::Error>> {
+    let all_severities = config.check.severity.is_empty();
     let mut all_rules: Vec<Rule> = get_all_rules()
         .into_iter()
-        .filter(|r| all_severities || args.severity.contains(&r.severity()))
+        .filter(|r| all_severities || config.check.severity.contains(&r.severity()))
         .collect();
     let all_rules_names: HashSet<&'static str> = all_rules.iter().map(|r| r.name()).collect();
     let mut selected_rules: Vec<Rule> = Vec::new();
 
-    if let Some(select_str) = &args.select {
-        let names: Vec<&str> = select_str.split(',').map(str::trim).collect();
-        let unknown_rules_names = get_unknown_rules(&names, &all_rules_names);
-        if !unknown_rules_names.is_empty() {
-            return Err(
-                format!("unknown selected rules: {}", unknown_rules_names.join(", ")).into(),
-            );
+    let unknown_rules_names = get_unknown_rules(&config.check.select, &all_rules_names);
+    if !unknown_rules_names.is_empty() {
+        return Err(format!("unknown selected rules: {}", unknown_rules_names.join(", ")).into());
+    }
+    for name in &config.check.select {
+        if name == "all" {
+            selected_rules.extend(all_rules.extract_if(.., |_| true));
+        } else if name == "checks" {
+            selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_check()));
+        } else if name == "default" {
+            selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_default()));
+        } else if name == "spelling" {
+            selected_rules
+                .extend(all_rules.extract_if(.., |rule| rule.name().starts_with("spelling-")));
+        } else {
+            selected_rules.extend(all_rules.extract_if(.., |rule| rule.name() == name));
         }
-        for name in names {
-            if name == "all" {
-                selected_rules.extend(all_rules.extract_if(.., |_| true));
-            } else if name == "checks" {
-                selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_check()));
-            } else if name == "default" {
-                selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_default()));
-            } else if name == "spelling" {
-                selected_rules
-                    .extend(all_rules.extract_if(.., |rule| rule.name().starts_with("spelling-")));
-            } else {
-                selected_rules.extend(all_rules.extract_if(.., |rule| rule.name() == name));
-            }
-        }
-    } else {
-        // If no selection was provided, start with all default rules.
-        selected_rules.extend(all_rules.extract_if(.., |rule| rule.is_default()));
     }
 
     // Remove the ignored rules.
-    if let Some(ignore_str) = &args.ignore {
-        let names: Vec<&str> = ignore_str.split(',').map(str::trim).collect();
-        let unknown_rules_names = get_unknown_rules(&names, &all_rules_names);
-        if !unknown_rules_names.is_empty() {
-            return Err(format!(
-                "unknown rules to ignore: {}",
-                unknown_rules_names.join(", ")
-            )
-            .into());
-        }
-        selected_rules.retain(|rule| !names.contains(&rule.name()));
+    let unknown_rules_names = get_unknown_rules(&config.check.ignore, &all_rules_names);
+    if !unknown_rules_names.is_empty() {
+        return Err(format!(
+            "unknown rules to ignore: {}",
+            unknown_rules_names.join(", ")
+        )
+        .into());
     }
+    selected_rules.retain(|rule| !config.check.ignore.iter().any(|r| r == rule.name()));
 
     // Sort rules by name.
     selected_rules.sort_by(|a, b| a.name().cmp(b.name()));

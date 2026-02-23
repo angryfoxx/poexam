@@ -547,9 +547,9 @@ pub fn run_stats(args: &args::StatsArgs) -> i32 {
     let po_files = find_po_files(&args.files);
     let mut stats: Vec<StatsFile> = po_files
         .par_iter()
-        .map(|f| {
-            stats_file(f, args).map_err(|e| {
-                eprintln!("Error processing file {}: {}", f.display(), e);
+        .map(|path| {
+            stats_file(path, args).map_err(|e| {
+                eprintln!("Error processing file {}: {}", path.display(), e);
                 e
             })
         })

@@ -7,11 +7,9 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use serde::{Deserialize, Serialize};
 
 use crate::diagnostic::Severity;
-
-pub const DEFAULT_PATH_DICTS: &str = "/usr/share/hunspell";
-pub const DEFAULT_LANG_ID: &str = "en_US";
 
 #[derive(Debug, Parser)]
 #[command(
@@ -70,17 +68,17 @@ pub struct CheckArgs {
     #[arg(short, long)]
     pub ignore: Option<String>,
 
-    /// Path to hunspell dictionaries
-    #[arg(long, default_value = DEFAULT_PATH_DICTS)]
-    pub path_dicts: PathBuf,
+    /// Path to hunspell dictionaries (default: `/usr/share/hunspell`)
+    #[arg(long)]
+    pub path_dicts: Option<PathBuf>,
 
     /// Path to a directory containing files with list of words to add per language (files are `*.dic`, e.g. `en_US.dic`, with one word per line)
     #[arg(long)]
     pub path_words: Option<PathBuf>,
 
-    /// Language used to check source strings
-    #[arg(long, default_value = DEFAULT_LANG_ID)]
-    pub lang_id: String,
+    /// Language used to check source strings (default: `en_US`)
+    #[arg(long)]
+    pub lang_id: Option<String>,
 
     /// Perform only checks with this severity (can be given multiple times); by default all checks are performed
     #[arg(short = 'e', long, value_enum)]
@@ -112,7 +110,7 @@ pub struct CheckArgs {
 }
 
 /// Sort of errors.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum CheckSort {
     #[default]
     /// Sort by path, line number
@@ -149,7 +147,7 @@ pub struct StatsArgs {
 }
 
 /// Output format for `check` command.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum CheckOutputFormat {
     #[default]
     /// Human readable text format
@@ -173,7 +171,7 @@ impl std::fmt::Display for CheckOutputFormat {
 }
 
 /// Output format for `stats` command.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum StatsOutputFormat {
     #[default]
     /// Human readable text format
@@ -193,7 +191,7 @@ impl std::fmt::Display for StatsOutputFormat {
 }
 
 /// Sort in stats output.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
 pub enum StatsSort {
     #[default]
     /// Sort by path

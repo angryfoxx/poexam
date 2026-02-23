@@ -12,7 +12,7 @@ use std::{
 use clap::ValueEnum;
 use colored::Colorize;
 use serde::{
-    Serialize,
+    Deserialize, Serialize,
     ser::{SerializeStruct, Serializer},
 };
 
@@ -20,8 +20,20 @@ const HIGHLIGHT_COLOR: &str = "bright yellow";
 const HIGHLIGHT_ON_COLOR: &str = "red";
 
 #[derive(
-    Debug, Default, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Hash, Serialize, ValueEnum,
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Ord,
+    PartialOrd,
+    Hash,
+    Serialize,
+    Deserialize,
+    ValueEnum,
 )]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     #[default]
     Info,

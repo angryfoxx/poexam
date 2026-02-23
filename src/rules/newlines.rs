@@ -238,9 +238,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_newlines(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(NewlinesRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -331,6 +331,18 @@ msgstr "\ntesté"
         let diag = &diags[3];
         assert_eq!(diag.severity, Severity::Error);
         assert_eq!(diag.message, "extra line feed '\\n' at the beginning");
+    }
+
+    #[test]
+    fn test_newlines_error_noqa() {
+        let diags = check_newlines(
+            r#"
+#, noqa:newlines
+msgid "\rtested"
+msgstr "testé\rligne 2"
+"#,
+        );
+        assert!(diags.is_empty());
     }
 
     #[test]

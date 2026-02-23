@@ -67,9 +67,9 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_changed(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(ChangedRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -90,6 +90,18 @@ msgstr ""
             r#"
 msgid "tested"
 msgstr "tested"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_changed_error_noqa() {
+        let diags = check_changed(
+            r#"
+#, noqa:changed
+msgid "this is a test (example"
+msgstr "this is a test (example)"
 "#,
         );
         assert!(diags.is_empty());

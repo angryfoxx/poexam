@@ -69,14 +69,14 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_untranslated(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(UntranslatedRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
     #[test]
-    fn test_not_fuzzy() {
+    fn test_translated() {
         let diags = check_untranslated(
             r#"
 msgid "tested"
@@ -87,7 +87,19 @@ msgstr "testé"
     }
 
     #[test]
-    fn test_fuzzy_error() {
+    fn test_untranslated_error_noqa() {
+        let diags = check_untranslated(
+            r#"
+#, noqa:untranslated
+msgid "tested"
+msgstr ""
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_untranslated_error() {
         let diags = check_untranslated(
             r#"
 msgid "tested"

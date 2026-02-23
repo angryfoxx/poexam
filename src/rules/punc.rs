@@ -234,16 +234,16 @@ mod tests {
     use crate::{diagnostic::Diagnostic, rules::rule::Rules};
 
     fn check_punc_start(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(PuncStartRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
     fn check_punc_end(content: &str) -> Vec<Diagnostic> {
+        let mut checker = Checker::new(content.as_bytes());
         let rules = Rules::new(vec![Box::new(PuncEndRule {})]);
-        let mut checker = Checker::new(content.as_bytes(), &rules);
-        checker.do_all_checks();
+        checker.do_all_checks(&rules);
         checker.diagnostics
     }
 
@@ -345,6 +345,26 @@ msgstr "テスト済み。"
             r#"
 msgid "tested,"
 msgstr "テスト済み，"
+"#,
+        );
+        assert!(diags.is_empty());
+    }
+
+    #[test]
+    fn test_punc_error_noqa() {
+        let diags = check_punc_start(
+            r#"
+#, noqa:punc-start
+msgid ":tested!"
+msgstr ",testé !!!"
+"#,
+        );
+        assert!(diags.is_empty());
+        let diags = check_punc_end(
+            r#"
+#, noqa:punc-end
+msgid ":tested!"
+msgstr ",testé !!!"
 "#,
         );
         assert!(diags.is_empty());
