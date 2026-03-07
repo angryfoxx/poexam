@@ -148,11 +148,7 @@ pub fn get_unknown_rules<'a>(
 /// If `--select` is not provided, all default rules are included.
 /// Then, any rules specified in `--ignore` are removed from the selection.
 pub fn get_selected_rules(config: &Config) -> Result<Rules, Box<dyn std::error::Error>> {
-    let all_severities = config.check.severity.is_empty();
-    let mut all_rules: Vec<Rule> = get_all_rules()
-        .into_iter()
-        .filter(|r| all_severities || config.check.severity.contains(&r.severity()))
-        .collect();
+    let mut all_rules: Vec<Rule> = get_all_rules();
     let all_rules_names: HashSet<&'static str> = all_rules.iter().map(|r| r.name()).collect();
     let mut selected_rules: Vec<Rule> = Vec::new();
 
@@ -185,6 +181,11 @@ pub fn get_selected_rules(config: &Config) -> Result<Rules, Box<dyn std::error::
         .into());
     }
     selected_rules.retain(|rule| !config.check.ignore.iter().any(|r| r == rule.name()));
+
+    // Retain only rules with the specified severities.
+    let all_severities = config.check.severity.is_empty();
+    selected_rules
+        .retain(|rule| all_severities || config.check.severity.contains(&rule.severity()));
 
     // Sort rules by name.
     selected_rules.sort_by(|a, b| a.name().cmp(b.name()));
