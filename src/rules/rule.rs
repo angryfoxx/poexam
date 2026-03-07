@@ -227,3 +227,458 @@ pub fn run_rules(_args: &args::RulesArgs) -> i32 {
     println!("  spelling: all spelling rules");
     0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostic::Severity;
+
+    fn rule_names(rules: &Rules) -> Vec<&str> {
+        rules.enabled.iter().map(|r| r.name()).collect()
+    }
+
+    fn make_config(select: Vec<&str>, ignore: Vec<&str>, severity: Vec<Severity>) -> Config {
+        let mut config = Config::default();
+        config.check.select = select.into_iter().map(String::from).collect();
+        config.check.ignore = ignore.into_iter().map(String::from).collect();
+        config.check.severity = severity;
+        config
+    }
+
+    fn all_rules_name_set() -> HashSet<&'static str> {
+        get_all_rules().iter().map(|r| r.name()).collect()
+    }
+
+    #[test]
+    fn test_get_all_rules() {
+        let rules = get_all_rules();
+        assert!(!rules.is_empty());
+        let names: HashSet<&str> = rules.iter().map(|r| r.name()).collect();
+        assert_eq!(names.len(), rules.len(), "rule names must be unique");
+        assert!(
+            rules.iter().any(|r| r.is_default()),
+            "should have at least one default rule"
+        );
+        assert!(
+            rules.iter().any(|r| !r.is_default()),
+            "should have at least one non-default rule"
+        );
+        assert!(
+            rules.iter().any(|r| r.is_check()),
+            "should have at least one check rule"
+        );
+        assert!(
+            rules.iter().any(|r| !r.is_check()),
+            "should have at least one non-check rule"
+        );
+    }
+
+    #[test]
+    fn test_rules_new_empty() {
+        let rules = Rules::new(vec![]);
+        assert!(rules.enabled.is_empty());
+        assert!(!rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+        assert!(!rules.spelling_ctxt_rule);
+        assert!(!rules.spelling_id_rule);
+        assert!(!rules.spelling_str_rule);
+    }
+
+    #[test]
+    fn test_rules_new_fuzzy_flag() {
+        let rules = Rules::new(vec![Box::new(fuzzy::FuzzyRule {})]);
+        assert!(rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+    }
+
+    #[test]
+    fn test_rules_new_obsolete_flag() {
+        let rules = Rules::new(vec![Box::new(obsolete::ObsoleteRule {})]);
+        assert!(!rules.fuzzy_rule);
+        assert!(rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+    }
+
+    #[test]
+    fn test_rules_new_untranslated_flag() {
+        let rules = Rules::new(vec![Box::new(untranslated::UntranslatedRule {})]);
+        assert!(!rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(rules.untranslated_rule);
+    }
+
+    #[test]
+    fn test_rules_new_spelling_flags() {
+        let rules = Rules::new(vec![
+            Box::new(spelling::SpellingCtxtRule {}),
+            Box::new(spelling::SpellingIdRule {}),
+            Box::new(spelling::SpellingStrRule {}),
+        ]);
+        assert!(rules.spelling_ctxt_rule);
+        assert!(rules.spelling_id_rule);
+        assert!(rules.spelling_str_rule);
+        assert!(!rules.fuzzy_rule);
+    }
+
+    #[test]
+    fn test_rules_new_all_flags() {
+        let rules = Rules::new(vec![
+            Box::new(fuzzy::FuzzyRule {}),
+            Box::new(obsolete::ObsoleteRule {}),
+            Box::new(untranslated::UntranslatedRule {}),
+            Box::new(spelling::SpellingCtxtRule {}),
+            Box::new(spelling::SpellingIdRule {}),
+            Box::new(spelling::SpellingStrRule {}),
+        ]);
+        assert!(rules.fuzzy_rule);
+        assert!(rules.obsolete_rule);
+        assert!(rules.untranslated_rule);
+        assert!(rules.spelling_ctxt_rule);
+        assert!(rules.spelling_id_rule);
+        assert!(rules.spelling_str_rule);
+        assert_eq!(rules.enabled.len(), 6);
+    }
+
+    #[test]
+    fn test_rules_new_non_special_rule() {
+        let rules = Rules::new(vec![Box::new(blank::BlankRule {})]);
+        assert_eq!(rules.enabled.len(), 1);
+        assert!(!rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+        assert!(!rules.spelling_ctxt_rule);
+        assert!(!rules.spelling_id_rule);
+        assert!(!rules.spelling_str_rule);
+    }
+
+    #[test]
+    fn test_rules_default_ref() {
+        let rules: &Rules = Default::default();
+        assert!(rules.enabled.is_empty());
+        assert!(!rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+        assert!(!rules.spelling_ctxt_rule);
+        assert!(!rules.spelling_id_rule);
+        assert!(!rules.spelling_str_rule);
+    }
+
+    #[test]
+    fn test_rule_display() {
+        let rule: Rule = Box::new(blank::BlankRule {});
+        let display = format!("{rule}");
+        assert!(display.contains("blank"));
+        assert!(display.contains('['));
+        assert!(display.contains(']'));
+    }
+
+    #[test]
+    fn test_get_unknown_rules_empty_names() {
+        let names: Vec<String> = vec![];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        assert!(unknown.is_empty());
+    }
+
+    #[test]
+    fn test_get_unknown_rules_all_known() {
+        let names = vec![String::from("blank"), String::from("fuzzy")];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        assert!(unknown.is_empty());
+    }
+
+    #[test]
+    fn test_get_unknown_rules_one_unknown() {
+        let names = vec![String::from("blank"), String::from("nonexistent")];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        assert_eq!(unknown, vec!["nonexistent"]);
+    }
+
+    #[test]
+    fn test_get_unknown_rules_multiple_unknown() {
+        let names = vec![
+            String::from("blank"),
+            String::from("zzz-unknown"),
+            String::from("aaa-unknown"),
+        ];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        // Results should be sorted.
+        assert_eq!(unknown, vec!["aaa-unknown", "zzz-unknown"]);
+    }
+
+    #[test]
+    fn test_get_unknown_rules_special_rules_ignored() {
+        // Rules "all", "checks", "default", "spelling" are special and should NOT be reported as unknown.
+        let names = vec![
+            String::from("all"),
+            String::from("checks"),
+            String::from("default"),
+            String::from("spelling"),
+        ];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        assert!(unknown.is_empty());
+    }
+
+    #[test]
+    fn test_get_unknown_rules_special_mixed_with_unknown() {
+        let names = vec![String::from("all"), String::from("does-not-exist")];
+        let all_names = all_rules_name_set();
+        let unknown = get_unknown_rules(&names, &all_names);
+        assert_eq!(unknown, vec!["does-not-exist"]);
+    }
+
+    #[test]
+    fn test_get_selected_rules_default() {
+        let config = make_config(vec!["default"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        let all = get_all_rules();
+        // All default rules should be present.
+        let expected_defaults: Vec<&str> = all
+            .iter()
+            .filter(|r| r.is_default())
+            .map(|r| r.name())
+            .collect();
+        for name in &expected_defaults {
+            assert!(names.contains(name), "missing default rule: {name}");
+        }
+        // Non-default rules should be absent.
+        let non_defaults: Vec<&str> = all
+            .iter()
+            .filter(|r| !r.is_default())
+            .map(|r| r.name())
+            .collect();
+        for name in &non_defaults {
+            assert!(!names.contains(name), "unexpected non-default rule: {name}");
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_all() {
+        let config = make_config(vec!["all"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let all = get_all_rules();
+        assert_eq!(rules.enabled.len(), all.len());
+    }
+
+    #[test]
+    fn test_get_selected_rules_checks() {
+        let config = make_config(vec!["checks"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        let all = get_all_rules();
+        // All check rules should be present.
+        let expected_checks: Vec<&str> = all
+            .iter()
+            .filter(|r| r.is_check())
+            .map(|r| r.name())
+            .collect();
+        for name in &expected_checks {
+            assert!(names.contains(name), "missing check rule: {name}");
+        }
+        // Non-check rules should be absent.
+        let non_checks: Vec<&str> = all
+            .iter()
+            .filter(|r| !r.is_check())
+            .map(|r| r.name())
+            .collect();
+        for name in &non_checks {
+            assert!(!names.contains(name), "unexpected non-check rule: {name}");
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_spelling() {
+        let config = make_config(vec!["spelling"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        assert!(names.contains(&"spelling-ctxt"));
+        assert!(names.contains(&"spelling-id"));
+        assert!(names.contains(&"spelling-str"));
+        assert_eq!(rules.enabled.len(), 3);
+    }
+
+    #[test]
+    fn test_get_selected_rules_single_rule() {
+        let config = make_config(vec!["blank"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        assert_eq!(names, vec!["blank"]);
+    }
+
+    #[test]
+    fn test_get_selected_rules_multiple_explicit() {
+        let config = make_config(vec!["blank", "fuzzy", "tabs"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        assert_eq!(names, vec!["blank", "fuzzy", "tabs"]);
+    }
+
+    #[test]
+    fn test_get_selected_rules_default_plus_spelling() {
+        let config = make_config(vec!["default", "spelling"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        assert!(names.contains(&"spelling-ctxt"));
+        assert!(names.contains(&"spelling-id"));
+        assert!(names.contains(&"spelling-str"));
+        // Default rules should also be present.
+        assert!(names.contains(&"blank"));
+    }
+
+    #[test]
+    fn test_get_selected_rules_sorted_by_name() {
+        let config = make_config(vec!["all"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        assert_eq!(names, sorted, "rules should be sorted by name");
+    }
+
+    #[test]
+    fn test_get_selected_rules_ignore() {
+        let config = make_config(vec!["default"], vec!["blank", "tabs"], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let names = rule_names(&rules);
+        assert!(!names.contains(&"blank"));
+        assert!(!names.contains(&"tabs"));
+    }
+
+    #[test]
+    fn test_get_selected_rules_ignore_all_selected() {
+        let config = make_config(vec!["blank"], vec!["blank"], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        assert!(rules.enabled.is_empty());
+    }
+
+    #[test]
+    fn test_get_selected_rules_severity_filter() {
+        let config = make_config(
+            vec!["all"],
+            vec!["punc-start", "punc-end"],
+            vec![Severity::Error],
+        );
+        let rules = get_selected_rules(&config).unwrap();
+        for rule in &rules.enabled {
+            assert_eq!(
+                rule.severity(),
+                Severity::Error,
+                "rule '{}' should have Error severity",
+                rule.name()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_severity_filter_warning() {
+        let config = make_config(vec!["all"], vec![], vec![Severity::Warning]);
+        let rules = get_selected_rules(&config).unwrap();
+        for rule in &rules.enabled {
+            assert_eq!(
+                rule.severity(),
+                Severity::Warning,
+                "rule '{}' should have Warning severity",
+                rule.name()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_severity_filter_multiple() {
+        let config = make_config(
+            vec!["all"],
+            vec![],
+            vec![Severity::Warning, Severity::Error],
+        );
+        let rules = get_selected_rules(&config).unwrap();
+        for rule in &rules.enabled {
+            assert!(
+                rule.severity() == Severity::Warning || rule.severity() == Severity::Error,
+                "rule '{}' has unexpected severity",
+                rule.name()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_empty_severity_means_all() {
+        let config = make_config(vec!["all"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        let all = get_all_rules();
+        assert_eq!(rules.enabled.len(), all.len());
+    }
+
+    #[test]
+    fn test_get_selected_rules_unknown_select_error() {
+        let config = make_config(vec!["nonexistent-rule"], vec![], vec![]);
+        let result = get_selected_rules(&config);
+        match result {
+            Err(err) => {
+                let err = err.to_string();
+                assert!(
+                    err.contains("unknown selected rules"),
+                    "error should mention unknown selected rules, got: {err}"
+                );
+                assert!(err.contains("nonexistent-rule"));
+            }
+            Ok(_) => panic!("expected error for unknown selected rule"),
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_unknown_ignore_error() {
+        let config = make_config(vec!["default"], vec!["nonexistent-rule"], vec![]);
+        let result = get_selected_rules(&config);
+        match result {
+            Err(err) => {
+                let err = err.to_string();
+                assert!(
+                    err.contains("unknown rules to ignore"),
+                    "error should mention unknown rules to ignore, got: {err}"
+                );
+                assert!(err.contains("nonexistent-rule"));
+            }
+            Ok(_) => panic!("expected error for unknown ignored rule"),
+        }
+    }
+
+    #[test]
+    fn test_get_selected_rules_flags_set_correctly() {
+        let config = make_config(vec!["all"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        assert!(rules.fuzzy_rule);
+        assert!(rules.obsolete_rule);
+        assert!(rules.untranslated_rule);
+        assert!(rules.spelling_ctxt_rule);
+        assert!(rules.spelling_id_rule);
+        assert!(rules.spelling_str_rule);
+    }
+
+    #[test]
+    fn test_get_selected_rules_default_flags() {
+        let config = make_config(vec!["default"], vec![], vec![]);
+        let rules = get_selected_rules(&config).unwrap();
+        // Rules "fuzzy", "obsolete", "untranslated" are not default rules.
+        assert!(!rules.fuzzy_rule);
+        assert!(!rules.obsolete_rule);
+        assert!(!rules.untranslated_rule);
+        // Spelling rules are not default either.
+        assert!(!rules.spelling_ctxt_rule);
+        assert!(!rules.spelling_id_rule);
+        assert!(!rules.spelling_str_rule);
+    }
+
+    #[test]
+    fn test_run_rules_returns_zero() {
+        let args = args::RulesArgs;
+        let exit_code = run_rules(&args);
+        assert_eq!(exit_code, 0);
+    }
+}
