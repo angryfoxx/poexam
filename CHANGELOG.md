@@ -21,6 +21,7 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 ### Fixed
 
+- Parse "noqa" in simple comments (lines starting with "# noqa")
 - Fix error on unknown rules when using `--severity`
 - Remove leading "./" from file paths
 

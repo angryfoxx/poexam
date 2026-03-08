@@ -152,12 +152,9 @@ impl<'d> Parser<'d> {
                         entry.fuzzy = true;
                     } else if kw == "noqa" {
                         entry.noqa = true;
-                    } else if let Some(stripped) = kw.strip_prefix("noqa:") {
-                        entry.noqa_rules = stripped
-                            .split(';')
-                            .map(str::trim)
-                            .map(String::from)
-                            .collect();
+                    } else if let Some(rules) = kw.strip_prefix("noqa:") {
+                        entry.noqa_rules =
+                            rules.split(';').map(str::trim).map(String::from).collect();
                     } else if kw == "no-wrap" {
                         entry.nowrap = true;
                     } else if let Some(stripped) = kw.strip_suffix("-format") {
@@ -267,6 +264,15 @@ impl Iterator for Parser<'_> {
                 // Obsolete entry with a message (start or continued).
                 entry.obsolete = true;
                 self.parse_message(msg, &mut entry);
+            } else if let Some(rules) = line.strip_prefix(b"# noqa:") {
+                // Flag "noqa:xxx" in a comment (with rules).
+                entry.noqa_rules = rules
+                    .split(|&b| b == b';')
+                    .map(|b| String::from_utf8_lossy(b).trim().into())
+                    .collect();
+            } else if line.starts_with(b"# noqa") {
+                // Flag "noqa" in a comment.
+                entry.noqa = true;
             } else if line.starts_with(b"msg") || line.starts_with(b"\"") {
                 // Message line (start or continued).
                 self.parse_message(line, &mut entry);
@@ -561,11 +567,11 @@ msgstr[1] "fichiers"
     fn parse_comments() {
         let content = r#"
 # Translator comment
-#, fuzzy, c-format,   noqa, noqa:blank;pipes, no-wrap
+#, fuzzy, c-format,   noqa, noqa:blank; pipes, no-wrap
 #= keyword
 #: src/main.rs:42
-msgid "hello"
-msgstr "bonjour"
+msgid "hello, %s"
+msgstr "bonjour, %s"
 "#;
         let mut parser = Parser::new(content.as_bytes());
         let entries = parser.by_ref().collect::<Vec<Entry>>();
@@ -576,7 +582,7 @@ msgstr "bonjour"
                 "fuzzy".to_string(),
                 "c-format".to_string(),
                 "noqa".to_string(),
-                "noqa:blank;pipes".to_string(),
+                "noqa:blank; pipes".to_string(),
                 "no-wrap".to_string(),
                 "keyword".to_string(),
             ]
@@ -588,11 +594,59 @@ msgstr "bonjour"
         assert_eq!(entries[0].format_language, Language::C);
         assert!(!entries[0].encoding_error);
         assert!(entries[0].msgctxt.is_none());
-        assert_eq!(entries[0].msgid, Some(Message::new(6, "hello")));
+        assert_eq!(entries[0].msgid, Some(Message::new(6, "hello, %s")));
         assert!(entries[0].msgid_plural.is_none());
         assert_eq!(
             entries[0].msgstr.get(&0),
-            Some(Message::new(7, "bonjour")).as_ref()
+            Some(Message::new(7, "bonjour, %s")).as_ref()
+        );
+        // Parse "noqa" comment.
+        let content = r#"
+# noqa
+#, c-format
+msgid "hello, %s"
+msgstr "bonjour, %s"
+"#;
+        let mut parser = Parser::new(content.as_bytes());
+        let entries = parser.by_ref().collect::<Vec<Entry>>();
+        assert_eq!(entries[0].line_number, 2);
+        assert_eq!(entries[0].keywords, vec!["c-format"]);
+        assert!(!entries[0].fuzzy);
+        assert!(entries[0].noqa);
+        assert!(!entries[0].nowrap);
+        assert!(entries[0].noqa_rules.is_empty());
+        assert_eq!(entries[0].format_language, Language::C);
+        assert!(!entries[0].encoding_error);
+        assert!(entries[0].msgctxt.is_none());
+        assert_eq!(entries[0].msgid, Some(Message::new(4, "hello, %s")));
+        assert!(entries[0].msgid_plural.is_none());
+        assert_eq!(
+            entries[0].msgstr.get(&0),
+            Some(Message::new(5, "bonjour, %s")).as_ref()
+        );
+        // Parse "noqa:xxx" comment (with rules).
+        let content = r#"
+# noqa:blank; pipes
+#, c-format
+msgid "hello, %s"
+msgstr "bonjour, %s"
+"#;
+        let mut parser = Parser::new(content.as_bytes());
+        let entries = parser.by_ref().collect::<Vec<Entry>>();
+        assert_eq!(entries[0].line_number, 2);
+        assert_eq!(entries[0].keywords, vec!["c-format"]);
+        assert!(!entries[0].fuzzy);
+        assert!(!entries[0].noqa);
+        assert!(!entries[0].nowrap);
+        assert_eq!(entries[0].noqa_rules, vec!["blank", "pipes"]);
+        assert_eq!(entries[0].format_language, Language::C);
+        assert!(!entries[0].encoding_error);
+        assert!(entries[0].msgctxt.is_none());
+        assert_eq!(entries[0].msgid, Some(Message::new(4, "hello, %s")));
+        assert!(entries[0].msgid_plural.is_none());
+        assert_eq!(
+            entries[0].msgstr.get(&0),
+            Some(Message::new(5, "bonjour, %s")).as_ref()
         );
     }
 
