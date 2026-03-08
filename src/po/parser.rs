@@ -258,10 +258,10 @@ impl Iterator for Parser<'_> {
             }
             started = true;
             if let Some(keywords) = line.strip_prefix(b"#,") {
-                // Workflow & stiky flags.
+                // Workflow and sticky flags.
                 Parser::parse_keywords(keywords, &mut entry);
             } else if let Some(keywords) = line.strip_prefix(b"#=") {
-                // Workflow & stiky flags.
+                // Workflow and sticky flags.
                 Parser::parse_keywords(keywords, &mut entry);
             } else if let Some(msg) = line.strip_prefix(b"#~ ") {
                 // Obsolete entry with a message (start or continued).
